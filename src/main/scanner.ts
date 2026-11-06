@@ -45,6 +45,27 @@ export async function exists(path: string): Promise<boolean> {
   }
 }
 
+const HINT_DIRS = ['assemblies', 'defs', 'patches', 'textures', 'sounds', 'languages']
+
+async function subdirs(dir: string): Promise<string[]> {
+  try {
+    return (await readdir(dir, { withFileTypes: true })).filter((e) => e.isDirectory()).map((e) => e.name)
+  } catch {
+    return []
+  }
+}
+
+/** Which content folders a mod ships, looking at the root and at version folders like 1.6/ or Common/. */
+async function contentHints(folder: string): Promise<string[]> {
+  const found = new Set<string>()
+  const top = await subdirs(folder)
+  const nested = top.filter((n) => /^(v?\d+(\.\d+)*|common)$/i.test(n))
+  for (const names of [top, ...(await Promise.all(nested.map((n) => subdirs(join(folder, n)))))]) {
+    for (const n of names) if (HINT_DIRS.includes(n.toLowerCase())) found.add(n.toLowerCase())
+  }
+  return HINT_DIRS.filter((h) => found.has(h))
+}
+
 interface RawMod {
   mod: Omit<ModInfo, 'uid'>
 }
@@ -80,7 +101,8 @@ async function readMod(folder: string, folderName: string, source: ModSource, fa
       folderName,
       steamId: source === 'workshop' && /^\d+$/.test(folderName) ? folderName : undefined,
       previewPath,
-      parseIssue: parsed.issue
+      parseIssue: parsed.issue,
+      contentHints: await contentHints(folder)
     }
   }
 }

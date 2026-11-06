@@ -48,6 +48,8 @@ export interface GameExit {
 /** Everything the renderer can ask of the main process. Exposed as `window.api` by the preload. */
 export interface LauncherApi {
   getSettings(): Promise<Settings>
+  getCategories(): Promise<Record<string, string>>
+  setCategory(packageId: string, category: string | null): Promise<Record<string, string>>
   saveSettings(settings: Settings): Promise<Settings>
   detectSettings(): Promise<Settings>
   pickFolder(current: string): Promise<string | undefined>

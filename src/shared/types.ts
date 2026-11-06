@@ -37,6 +37,8 @@ export interface ModInfo extends AboutData {
   previewPath?: string
   /** Set when About.xml was missing or could not be parsed cleanly. */
   parseIssue?: string
+  /** Content folders found in the mod (lowercase): assemblies, defs, patches, textures, sounds, languages. */
+  contentHints?: string[]
 }
 
 export interface ScanResult {

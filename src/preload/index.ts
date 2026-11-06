@@ -8,6 +8,8 @@ const call =
 
 const api = {
   getSettings: call('getSettings'),
+  getCategories: call('getCategories'),
+  setCategory: call('setCategory'),
   saveSettings: call('saveSettings'),
   detectSettings: call('detectSettings'),
   pickFolder: call('pickFolder'),

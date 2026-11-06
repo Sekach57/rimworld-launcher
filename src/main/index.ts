@@ -11,6 +11,7 @@ import { detectSettings, readGameVersion } from './detect.ts'
 import { InstanceStore, readDefaultModsConfig } from './instances.ts'
 import { exists, scanMods } from './scanner.ts'
 import { loadSettings, saveSettings } from './settings.ts'
+import { loadCategories, setCategory } from './categories.ts'
 import { answerBisect, restoreList, startBisect, testList, type BisectState, type DepMap } from '../shared/bisect.ts'
 import { missingMods, parseList, serializeList, type ExportFormat } from '../shared/modlistIO.ts'
 import { analyzeLogFile, buildAttribMods, clearBisect, deleteSnapshot, findLog, readBisect, readSnapshots, takeSnapshot, writeBisect } from './tools.ts'
@@ -21,6 +22,7 @@ if (process.env.LAUNCHER_USER_DATA) app.setPath('userData', resolve(process.env.
 protocol.registerSchemesAsPrivileged([{ scheme: PREVIEW_SCHEME, privileges: { standard: true, secure: true, supportFetchAPI: true } }])
 
 const settingsFile = () => join(app.getPath('userData'), 'settings.json')
+const categoriesFile = () => join(app.getPath('userData'), 'categories.json')
 const store = () => new InstanceStore(join(app.getPath('userData'), 'instances'), (p) => shell.trashItem(p))
 
 let settings: Settings | undefined
@@ -130,6 +132,8 @@ function registerIpc(): void {
     ipcMain.handle(name, (_event, ...args) => fn(...(args as A)))
 
   handle('getSettings', getSettings)
+  handle('getCategories', () => loadCategories(categoriesFile()))
+  handle('setCategory', (id: unknown, cat: unknown) => setCategory(categoriesFile(), id, cat))
   handle('saveSettings', async (next: Settings) => {
     settings = await saveSettings(settingsFile(), next)
     lastScan = undefined

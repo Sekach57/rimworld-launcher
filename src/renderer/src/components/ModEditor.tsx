@@ -16,6 +16,7 @@ import { defaultRangeExtractor, useVirtualizer, type Range } from '@tanstack/rea
 import { AlertTriangle, ArrowDownAZ, GripVertical, Minus, PackageOpen, Plus, Rows2, Rows3, Rows4, Search, X } from 'lucide-react'
 import { previewUrl } from '@shared/api.ts'
 import { moveWarnings } from '@shared/checks.ts'
+import { CATEGORIES, categoryOf, type Category } from '@shared/categories.ts'
 import type { Issue, ModInfo } from '@shared/types.ts'
 import { ISSUE_LABEL, SOURCE_LABEL } from '../format.ts'
 
@@ -31,6 +32,7 @@ interface Props {
   onSelect(uid: string | undefined): void
   onChange(mods: string[]): void
   onSort(): void
+  categories: Record<string, string>
 }
 
 function matches(mod: ModInfo | undefined, uid: string, q: string): boolean {
@@ -63,6 +65,7 @@ export function ModEditor(p: Props) {
   const [density, setDensityState] = useState<Density>(loadDensity)
   const [dragging, setDragging] = useState<string | null>(null)
   const [warning, setWarning] = useState<string[]>([])
+  const [cat, setCat] = useState('')
   const q = query.trim().toLowerCase()
   const activeSet = useMemo(() => new Set(p.active), [p.active])
   const rowH = ROW_HEIGHT[density]
@@ -74,10 +77,27 @@ export function ModEditor(p: Props) {
         .sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: 'base' })),
     [p.installed, activeSet]
   )
-  const shownInactive = useMemo(() => inactive.filter((m) => matches(m, m.uid, q)).map((m) => m.uid), [inactive, q])
-  const shownActive = useMemo(() => p.active.filter((uid) => matches(p.mods.get(uid), uid, q)), [p.active, p.mods, q])
+  const catOf = useMemo(() => {
+    const map = new Map<string, Category>()
+    for (const m of p.installed) map.set(m.uid, categoryOf(m, p.categories))
+    return map
+  }, [p.installed, p.categories])
+  const counts = useMemo(() => {
+    const c = new Map<string, number>()
+    for (const v of catOf.values()) c.set(v, (c.get(v) ?? 0) + 1)
+    return c
+  }, [catOf])
+  const inCat = useCallback((uid: string) => !cat || catOf.get(uid) === cat, [cat, catOf])
+  const shownInactive = useMemo(
+    () => inactive.filter((m) => inCat(m.uid) && matches(m, m.uid, q)).map((m) => m.uid),
+    [inactive, q, inCat]
+  )
+  const shownActive = useMemo(
+    () => p.active.filter((uid) => inCat(uid) && matches(p.mods.get(uid), uid, q)),
+    [p.active, p.mods, q, inCat]
+  )
   const indexOf = useMemo(() => new Map(p.active.map((u, i) => [u, i])), [p.active])
-  const filtering = q.length > 0
+  const filtering = q.length > 0 || cat !== ''
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 4 } }),
@@ -126,6 +146,14 @@ export function ModEditor(p: Props) {
             </button>
           )}
         </label>
+        <select className="cat-filter" aria-label="Category filter" value={cat} onChange={(e) => setCat(e.target.value)}>
+          <option value="">All categories</option>
+          {CATEGORIES.filter((c) => counts.has(c)).map((c) => (
+            <option key={c} value={c}>
+              {c} ({counts.get(c)})
+            </option>
+          ))}
+        </select>
         <button className="btn" onClick={p.onSort} disabled={!p.canSort} title="Order active mods by their declared dependencies">
           <ArrowDownAZ size={16} /> Auto-sort
         </button>
@@ -169,6 +197,7 @@ export function ModEditor(p: Props) {
               <ModRow
                 uid={uid}
                 mod={p.mods.get(uid)}
+                category={catOf.get(uid)}
                 density={density}
                 selected={p.selected === uid}
                 onSelect={p.onSelect}
@@ -224,6 +253,7 @@ export function ModEditor(p: Props) {
                     uid={uid}
                     index={indexOf.get(uid)}
                     mod={p.mods.get(uid)}
+                    category={catOf.get(uid)}
                     density={density}
                     issues={p.issues.get(uid)}
                     selected={p.selected === uid}
@@ -252,7 +282,7 @@ export function ModEditor(p: Props) {
               ) : null}
             </DragOverlay>
           </DndContext>
-          {filtering && <div className="list-foot">Clear the search to reorder</div>}
+          {filtering && <div className="list-foot">Clear the search and category filter to reorder</div>}
         </div>
       </div>
     </section>
@@ -329,6 +359,7 @@ interface RowProps {
   density: Density
   selected: boolean
   toggleLabel: 'Enable' | 'Disable'
+  category?: string
   onSelect(uid: string): void
   onToggle(uid: string): void
 }
@@ -350,7 +381,7 @@ function SortableRow(props: Omit<RowProps, 'toggleLabel'> & { disabled: boolean 
   )
 }
 
-const ModRow = memo(function ModRow({ uid, mod, issues, index, density, selected, toggleLabel, onSelect, onToggle }: RowProps) {
+const ModRow = memo(function ModRow({ uid, mod, issues, index, density, selected, toggleLabel, category, onSelect, onToggle }: RowProps) {
   const [broken, setBroken] = useState(false)
   const worst = issues?.some((i) => i.severity === 'error') ? 'error' : issues?.length ? 'warn' : undefined
   const first = issues?.[0]
@@ -381,6 +412,7 @@ const ModRow = memo(function ModRow({ uid, mod, issues, index, density, selected
             {mod ? (
               <>
                 <span className={`src src-${mod.source}`}>{SOURCE_LABEL[mod.source]}</span>
+                {category && <span className="mod-cat">{category}</span>}
                 {mod.author && <span className="mod-author">{mod.author}</span>}
                 {version && <span className="mod-version">{version}</span>}
               </>

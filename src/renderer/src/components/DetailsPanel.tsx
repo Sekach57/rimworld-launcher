@@ -3,6 +3,7 @@ import { AlertTriangle, ArrowLeft, ChevronRight, CircleAlert, CircleCheck, Info,
 import { forVersion, majorMinor } from '@shared/about.ts'
 import { previewUrl } from '@shared/api.ts'
 import type { Issue, ModInfo } from '@shared/types.ts'
+import { CATEGORIES, autoCategory, isCategory } from '@shared/categories.ts'
 import { ISSUE_LABEL, SOURCE_LABEL, cleanDescription } from '../format.ts'
 
 interface Props {
@@ -13,6 +14,8 @@ interface Props {
   gameVersion: string
   onSelect(uid: string | undefined): void
   onOpenLog?(): void
+  categories?: Record<string, string>
+  onSetCategory?(packageId: string, category: string | null): void
 }
 
 export function DetailsPanel(p: Props) {
@@ -143,7 +146,7 @@ function IssuesFor(props: { uid: string; issues: Issue[] }) {
   )
 }
 
-function ModDetails({ mod, mods, active, issues, gameVersion, onSelect }: Props & { mod: ModInfo }) {
+function ModDetails({ mod, mods, active, issues, gameVersion, onSelect, categories, onSetCategory }: Props & { mod: ModInfo }) {
   const [broken, setBroken] = useState(false)
   const activeSet = useMemo(() => new Set(active), [active])
   const byPackage = useMemo(() => {
@@ -192,6 +195,10 @@ function ModDetails({ mod, mods, active, issues, gameVersion, onSelect }: Props 
               <dd className="mono">{mod.steamId}</dd>
             </>
           )}
+          <dt>Category</dt>
+          <dd>
+            <CategorySelect mod={mod} categories={categories} onSet={onSetCategory} />
+          </dd>
           <dt>Versions</dt>
           <dd className="versions">
             {mod.supportedVersions.length === 0 && <span className="muted">Not listed</span>}
@@ -243,5 +250,26 @@ function ModDetails({ mod, mods, active, issues, gameVersion, onSelect }: Props 
         )}
       </div>
     </div>
+  )
+}
+
+function CategorySelect(props: { mod: ModInfo; categories?: Record<string, string>; onSet?(id: string, c: string | null): void }) {
+  const manual = props.categories?.[props.mod.packageId.toLowerCase()]
+  const value = isCategory(manual) ? manual : ''
+  return (
+    <select
+      className="cat-select"
+      aria-label="Category"
+      value={value}
+      disabled={!props.onSet}
+      onChange={(e) => props.onSet?.(props.mod.packageId, e.target.value || null)}
+    >
+      <option value="">Auto ({autoCategory(props.mod)})</option>
+      {CATEGORIES.map((c) => (
+        <option key={c} value={c}>
+          {c}
+        </option>
+      ))}
+    </select>
   )
 }

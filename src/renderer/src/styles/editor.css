@@ -206,3 +206,11 @@ ul.chips { display: flex; flex-wrap: wrap; gap: 6px; }
   .mod-row .mod-version { display: none; }
   .mod-row { gap: 10px; }
 }
+
+.cat-filter,
+.cat-select { flex: none; height: 30px; padding: 0 8px; border: 1px solid var(--line-soft); border-radius: var(--radius-sm); background: var(--panel); color: inherit; font: inherit; font-size: 12px; }
+.cat-filter { max-width: 170px; }
+.cat-select { width: 100%; max-width: 220px; height: 26px; }
+.cat-filter:focus-visible,
+.cat-select:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.mod-cat { flex: none; padding: 0 6px; border: 1px solid var(--line-soft); border-radius: 999px; font-size: 11px; line-height: 16px; }

@@ -55,6 +55,7 @@ export function App() {
   const [tool, setTool] = useState<'log' | 'bisect' | 'backups' | undefined>(openViewFromUrl)
   const [exitInfo, setExitInfo] = useState<GameExit>()
   const [logKey, setLogKey] = useState(0)
+  const [categories, setCategories] = useState<Record<string, string>>({})
 
   const say = useCallback((text: string, tone: Notice['tone'] = 'info') => setNotice({ text, tone }), [])
 
@@ -78,8 +79,9 @@ export function App() {
   useEffect(() => {
     let cancelled = false
     ;(async () => {
-      const [s, list] = await Promise.all([api.getSettings(), api.listInstances()])
+      const [s, list, cats] = await Promise.all([api.getSettings(), api.listInstances(), api.getCategories()])
       if (cancelled) return
+      setCategories(cats)
       setSettings(s)
       setInstances(list)
       setSelectedId(list[0]?.id)
@@ -281,6 +283,7 @@ export function App() {
                 onSort={autoSort}
                 canSort={Boolean(scan)}
                 loading={!scan}
+                categories={categories}
               />
               {tool === 'log' ? (
                 <LogPanel
@@ -327,6 +330,10 @@ export function App() {
                 gameVersion={gameVersion}
                 onSelect={setSelectedMod}
                 onOpenLog={() => setTool('log')}
+                categories={categories}
+                onSetCategory={(id, cat) =>
+                  void api.setCategory(id, cat).then(setCategories, (e) => say(errorText(e), 'error'))
+                }
               />
               )}
             </div>
