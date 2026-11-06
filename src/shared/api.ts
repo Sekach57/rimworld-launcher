@@ -1,3 +1,4 @@
+import type { LogReport } from './logParser.ts'
 import type { Instance, ScanResult, Settings } from './types.ts'
 
 export interface InstanceInput {
@@ -12,6 +13,25 @@ export interface LaunchResult {
   error?: string
   /** The command line that was started, for display. */
   command?: string
+}
+
+export interface LogResult {
+  found: boolean
+  /** Full path of the log that was read. */
+  path?: string
+  source?: 'instance' | 'game'
+  modifiedAt?: string
+  report?: LogReport
+}
+
+/** Sent to the renderer when a game started by the launcher exits. */
+export interface GameExit {
+  id: string
+  code: number | null
+  signal: string | null
+  /** True when the exit code was non-zero or the log holds errors. */
+  abnormal: boolean
+  errors: number
 }
 
 /** Everything the renderer can ask of the main process. Exposed as `window.api` by the preload. */
@@ -30,6 +50,10 @@ export interface LauncherApi {
   setActiveMods(id: string, mods: string[]): Promise<Instance>
   openInstanceFolder(id: string): Promise<void>
   launch(id: string): Promise<LaunchResult>
+  analyzeLog(id: string): Promise<LogResult>
+  openLogFile(id: string): Promise<void>
+  /** Subscribes to game exit events. Returns an unsubscribe function. */
+  onGameExit(cb: (e: GameExit) => void): () => void
 }
 
 export const PREVIEW_SCHEME = 'modpreview'

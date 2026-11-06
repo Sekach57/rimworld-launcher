@@ -3,7 +3,7 @@ import { writeFile } from 'node:fs/promises'
 import { extname, join, resolve, sep } from 'node:path'
 import { pathToFileURL } from 'node:url'
 import { app, BrowserWindow, dialog, ipcMain, net, protocol, shell } from 'electron'
-import { PREVIEW_SCHEME, type InstanceInput, type LaunchResult } from '../shared/api.ts'
+import { PREVIEW_SCHEME, type GameExit, type InstanceInput, type LaunchResult, type LogResult } from '../shared/api.ts'
 import { buildLaunchCommand } from '../shared/launch.ts'
 import { OFFICIAL_ORDER, CORE_ID } from '../shared/sort.ts'
 import type { ScanResult, Settings } from '../shared/types.ts'
@@ -11,6 +11,7 @@ import { detectSettings, readGameVersion } from './detect.ts'
 import { InstanceStore, readDefaultModsConfig } from './instances.ts'
 import { exists, scanMods } from './scanner.ts'
 import { loadSettings, saveSettings } from './settings.ts'
+import { analyzeLogFile, buildAttribMods, findLog } from './tools.ts'
 
 // Lets a test run use a throwaway profile instead of the real one.
 if (process.env.LAUNCHER_USER_DATA) app.setPath('userData', resolve(process.env.LAUNCHER_USER_DATA))
@@ -65,6 +66,21 @@ async function servePreview(request: Request): Promise<Response> {
   }
 }
 
+/** Parses the log for one instance against its active mods. */
+async function analyzeInstanceLog(id: string, since?: number): Promise<LogResult> {
+  const instances = store()
+  const inst = await instances.get(id)
+  const mods = new Map((await scan()).mods.map((m) => [m.uid, m]))
+  const attrib = await buildAttribMods(inst.activeMods, mods)
+  const found = await findLog(instances.dataDir(id))
+  if (since !== undefined && (!found || Date.parse(found.modifiedAt) < since)) return { found: false }
+  return analyzeLogFile(instances.dataDir(id), attrib)
+}
+
+function notifyExit(e: GameExit): void {
+  for (const w of BrowserWindow.getAllWindows()) w.webContents.send('game-exit', e)
+}
+
 function registerIpc(): void {
   const handle = <A extends unknown[], R>(name: string, fn: (...args: A) => Promise<R> | R) =>
     ipcMain.handle(name, (_event, ...args) => fn(...(args as A)))
@@ -104,6 +120,12 @@ function registerIpc(): void {
     const error = await shell.openPath(store().dataDir(id))
     if (error) throw new Error(error)
   })
+  handle('analyzeLog', (id: string) => analyzeInstanceLog(id))
+  handle('openLogFile', async (id: string) => {
+    const found = await findLog(store().dataDir(id))
+    if (!found) throw new Error('No Player.log found yet. Start the game once first.')
+    shell.showItemInFolder(found.path)
+  })
   handle('launch', async (id: string): Promise<LaunchResult> => {
     try {
       const s = await getSettings()
@@ -112,6 +134,15 @@ function registerIpc(): void {
       const cmd = buildLaunchCommand(s.gameDir, s.exeName, instances.dataDir(id))
       if (!(await exists(cmd.file))) return { ok: false, error: `Game executable not found: ${cmd.file}` }
       const child = spawn(cmd.file, cmd.args, { cwd: cmd.cwd, detached: true, stdio: 'ignore', windowsHide: false })
+      const startedAt = Date.now() - 2000
+      child.on('exit', (code, signal) => {
+        analyzeInstanceLog(id, startedAt)
+          .then((r) => {
+            const errors = r.report?.total ?? 0
+            notifyExit({ id, code, signal, errors, abnormal: (code !== null && code !== 0) || signal !== null || errors > 0 })
+          })
+          .catch(() => notifyExit({ id, code, signal, errors: 0, abnormal: (code !== null && code !== 0) || signal !== null }))
+      })
       child.unref()
       await instances.markPlayed(id)
       return { ok: true, command: `"${cmd.file}" ${cmd.args.map((a) => `"${a}"`).join(' ')}` }

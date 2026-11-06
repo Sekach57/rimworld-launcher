@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { AlertTriangle, CircleCheck, Copy, FolderOpen, MoreHorizontal, Pencil, Play, Trash2 } from 'lucide-react'
+import { AlertTriangle, Archive, Bug, CircleCheck, Copy, FolderOpen, MoreHorizontal, Pencil, Play, ScrollText, Trash2 } from 'lucide-react'
 import { previewUrl } from '@shared/api.ts'
 import type { Instance, Issue, ModInfo } from '@shared/types.ts'
 import { coverPaths, relativeTime } from '../format.ts'
@@ -13,6 +13,7 @@ interface Props {
   onDelete(): void
   onOpenFolder(): void
   onLaunch(): void
+  onTool(tool: 'log' | 'bisect' | 'backups'): void
 }
 
 export function InstanceHeader({ instance, mods, issues, ...on }: Props) {
@@ -71,7 +72,7 @@ export function InstanceHeader({ instance, mods, issues, ...on }: Props) {
   )
 }
 
-function OverflowMenu(on: Pick<Props, 'onEdit' | 'onDuplicate' | 'onDelete' | 'onOpenFolder'>) {
+function OverflowMenu(on: Pick<Props, 'onEdit' | 'onDuplicate' | 'onDelete' | 'onOpenFolder' | 'onTool'>) {
   const [open, setOpen] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
   useEffect(() => {
@@ -114,6 +115,16 @@ function OverflowMenu(on: Pick<Props, 'onEdit' | 'onDuplicate' | 'onDelete' | 'o
           </button>
           <button role="menuitem" onClick={item(on.onOpenFolder)}>
             <FolderOpen size={15} /> Open folder
+          </button>
+          <hr />
+          <button role="menuitem" onClick={item(() => on.onTool('log'))}>
+            <ScrollText size={15} /> Log analysis
+          </button>
+          <button role="menuitem" onClick={item(() => on.onTool('bisect'))}>
+            <Bug size={15} /> Find a bad mod
+          </button>
+          <button role="menuitem" onClick={item(() => on.onTool('backups'))}>
+            <Archive size={15} /> Backups
           </button>
           <hr />
           <button role="menuitem" className="danger" onClick={item(on.onDelete)}>

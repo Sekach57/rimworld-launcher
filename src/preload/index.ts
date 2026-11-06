@@ -1,5 +1,5 @@
 import { contextBridge, ipcRenderer } from 'electron'
-import type { LauncherApi } from '../shared/api.ts'
+import type { GameExit, LauncherApi } from '../shared/api.ts'
 
 const call =
   (name: string) =>
@@ -20,7 +20,14 @@ const api = {
   deleteInstance: call('deleteInstance'),
   setActiveMods: call('setActiveMods'),
   openInstanceFolder: call('openInstanceFolder'),
-  launch: call('launch')
+  launch: call('launch'),
+  analyzeLog: call('analyzeLog'),
+  openLogFile: call('openLogFile'),
+  onGameExit: (cb: (e: GameExit) => void) => {
+    const fn = (_: unknown, e: GameExit) => cb(e)
+    ipcRenderer.on('game-exit', fn)
+    return () => ipcRenderer.removeListener('game-exit', fn)
+  }
 } satisfies Record<keyof LauncherApi, unknown>
 
 contextBridge.exposeInMainWorld('api', api as unknown as LauncherApi)

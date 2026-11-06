@@ -1,0 +1,42 @@
+/* Log, Bisect and Backups views that replace the details panel. */
+.tool-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; margin-bottom: 12px; }
+.tool-head h2 { margin: 0; }
+.tool-head p { margin: 2px 0 0; font-size: 12.5px; }
+.tool-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 14px; }
+.tool-actions .btn { display: inline-flex; align-items: center; gap: 6px; }
+.tool-section { margin: 18px 0 8px; font-size: 12px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); }
+.tool-note { font-size: 12.5px; color: var(--muted); margin: 8px 0; }
+.muted-empty { color: var(--muted); }
+
+.log-list { list-style: none; margin: 10px 0 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.log-item { background: var(--raised); border: 1px solid var(--line-soft); border-left: 3px solid var(--warn); border-radius: var(--radius-sm); padding: 9px 11px; }
+.log-item.cat-out-of-memory, .log-item.cat-missing-type, .log-item.cat-harmony { border-left-color: var(--error); }
+.log-top { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; }
+.log-count { margin-left: auto; }
+.log-top .suspect { cursor: pointer; border-color: var(--accent); color: var(--accent); }
+.log-msg { margin: 6px 0 4px; font-size: 12.5px; line-height: 1.45; word-break: break-word; }
+.log-toggle { display: inline-flex; align-items: center; gap: 4px; font-size: 12px; }
+.log-toggle .turn { transform: rotate(90deg); }
+.log-stack { margin: 6px 0 0; padding: 8px; max-height: 220px; overflow: auto; background: var(--bg-deep); border-radius: var(--radius-sm); font-size: 11.5px; white-space: pre; }
+
+.banner { display: flex; align-items: center; gap: 12px; padding: 9px 16px; background: var(--raised); border-bottom: 1px solid var(--line); font-size: 13px; }
+.banner.abnormal { border-left: 3px solid var(--error); }
+.banner span { flex: 1; }
+
+.progress { height: 6px; border-radius: 3px; background: var(--bg-deep); overflow: hidden; margin: 8px 0; }
+.progress > i { display: block; height: 100%; background: var(--accent); }
+.suspect-list, .snap-list { list-style: none; margin: 8px 0; padding: 0; display: flex; flex-direction: column; gap: 4px; }
+.suspect-list li, .snap-list li { display: flex; align-items: center; gap: 8px; padding: 6px 9px; background: var(--raised); border-radius: var(--radius-sm); font-size: 12.5px; }
+.suspect-list li > span:first-child, .snap-list .snap-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.snap-meta { color: var(--muted); font-size: 11.5px; }
+.diff-list { margin: 6px 0; padding-left: 16px; font-size: 12.5px; }
+.diff-add { color: var(--ok); }
+.diff-rem { color: var(--error); }
+.diff-mov { color: var(--warn); }
+.tool-row { display: flex; gap: 8px; align-items: center; margin: 8px 0; }
+.tool-row input { flex: 1; background: var(--bg-deep); border: 1px solid var(--line); border-radius: var(--radius-sm); color: var(--text); padding: 6px 9px; font: inherit; }
+
+.issue-group.info .issue-kind { color: var(--muted); }
+.issue-fold { width: 100%; text-align: left; display: flex; align-items: center; gap: 6px; padding: 8px 10px; background: transparent; border: 1px dashed var(--line); border-radius: var(--radius-sm); color: var(--muted); cursor: pointer; font: inherit; font-size: 12.5px; }
+.issue-fold:hover { background: var(--hover); }
+.issue-fold .turn { transform: rotate(90deg); }

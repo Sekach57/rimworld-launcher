@@ -1,6 +1,6 @@
 import { lazy, Suspense, useCallback, useEffect, useMemo, useState } from 'react'
-import { FolderCog, Library } from 'lucide-react'
-import type { InstanceInput } from '@shared/api.ts'
+import { FolderCog, Library, TriangleAlert } from 'lucide-react'
+import type { GameExit, InstanceInput } from '@shared/api.ts'
 import { checkMods, issuesByUid } from '@shared/checks.ts'
 import { sortMods } from '@shared/sort.ts'
 import type { Instance, ModInfo, ScanResult, Settings } from '@shared/types.ts'
@@ -10,6 +10,7 @@ import { Sidebar } from './components/Sidebar.tsx'
 
 const SettingsView = lazy(() => import('./components/SettingsView.tsx').then((m) => ({ default: m.SettingsView })))
 const DetailsPanel = lazy(() => import('./components/DetailsPanel.tsx').then((m) => ({ default: m.DetailsPanel })))
+const LogPanel = lazy(() => import('./components/LogPanel.tsx').then((m) => ({ default: m.LogPanel })))
 const InstanceDialog = lazy(() => import('./components/Dialogs.tsx').then((m) => ({ default: m.InstanceDialog })))
 const ConfirmDialog = lazy(() => import('./components/Dialogs.tsx').then((m) => ({ default: m.ConfirmDialog })))
 
@@ -43,6 +44,9 @@ export function App() {
   const [dialog, setDialog] = useState<Dialog>(null)
   const [notice, setNotice] = useState<Notice>()
   const [selectedMod, setSelectedMod] = useState<string>()
+  const [tool, setTool] = useState<'log' | 'bisect' | 'backups'>()
+  const [exitInfo, setExitInfo] = useState<GameExit>()
+  const [logKey, setLogKey] = useState(0)
 
   const say = useCallback((text: string, tone: Notice['tone'] = 'info') => setNotice({ text, tone }), [])
 
@@ -78,6 +82,15 @@ export function App() {
       cancelled = true
     }
   }, [api, runScan, say])
+
+  useEffect(
+    () =>
+      api.onGameExit((e) => {
+        setExitInfo(e)
+        setLogKey((k) => k + 1)
+      }),
+    [api]
+  )
 
   const mods = useMemo(() => new Map<string, ModInfo>((scan?.mods ?? []).map((m) => [m.uid, m])), [scan])
   const current = instances.find((i) => i.id === selectedId)
@@ -193,6 +206,7 @@ export function App() {
         onSelect={(id) => {
           setSelectedId(id)
           setSelectedMod(undefined)
+          setTool(undefined)
           setView('instance')
         }}
         onCreate={() => setDialog({ kind: 'create' })}
@@ -223,7 +237,29 @@ export function App() {
               onDelete={() => setDialog({ kind: 'delete', instance: current })}
               onOpenFolder={() => api.openInstanceFolder(current.id).catch((e) => say(errorText(e), 'error'))}
               onLaunch={launch}
+              onTool={setTool}
             />
+            {exitInfo && exitInfo.id === current.id && exitInfo.abnormal && (
+              <div className="banner abnormal" role="status">
+                <TriangleAlert size={16} />
+                <span>
+                  The game closed{exitInfo.code ? ` with code ${exitInfo.code}` : ''}
+                  {exitInfo.errors > 0 ? `, and the log has ${exitInfo.errors} error line${exitInfo.errors > 1 ? 's' : ''}` : ''}.
+                </span>
+                <button
+                  className="btn"
+                  onClick={() => {
+                    setTool('log')
+                    setExitInfo(undefined)
+                  }}
+                >
+                  Analyze log
+                </button>
+                <button className="btn ghost" onClick={() => setExitInfo(undefined)}>
+                  Dismiss
+                </button>
+              </div>
+            )}
             <div className="workspace">
               <ModEditor
                 active={current.activeMods}
@@ -237,6 +273,19 @@ export function App() {
                 canSort={Boolean(scan)}
                 loading={!scan}
               />
+              {tool === 'log' ? (
+                <LogPanel
+                  instance={current}
+                  mods={mods}
+                  refreshKey={logKey}
+                  onClose={() => setTool(undefined)}
+                  onSelectMod={(uid) => {
+                    setSelectedMod(uid)
+                    setTool(undefined)
+                  }}
+                  say={say}
+                />
+              ) : (
               <DetailsPanel
                 uid={selectedMod}
                 mods={mods}
@@ -245,6 +294,7 @@ export function App() {
                 gameVersion={gameVersion}
                 onSelect={setSelectedMod}
               />
+              )}
             </div>
           </>
         ) : (
