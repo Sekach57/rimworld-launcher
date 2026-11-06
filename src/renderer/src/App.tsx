@@ -10,6 +10,7 @@ import { Sidebar } from './components/Sidebar.tsx'
 
 const SettingsView = lazy(() => import('./components/SettingsView.tsx').then((m) => ({ default: m.SettingsView })))
 const DetailsPanel = lazy(() => import('./components/DetailsPanel.tsx').then((m) => ({ default: m.DetailsPanel })))
+const BackupsPanel = lazy(() => import('./components/BackupsPanel.tsx').then((m) => ({ default: m.BackupsPanel })))
 const BisectPanel = lazy(() => import('./components/BisectPanel.tsx').then((m) => ({ default: m.BisectPanel })))
 const LogPanel = lazy(() => import('./components/LogPanel.tsx').then((m) => ({ default: m.LogPanel })))
 const InstanceDialog = lazy(() => import('./components/Dialogs.tsx').then((m) => ({ default: m.InstanceDialog })))
@@ -296,6 +297,14 @@ export function App() {
                     setTool(undefined)
                   }}
                   onLaunch={doLaunch}
+                  onListChanged={() => void api.listInstances().then(setInstances)}
+                  say={say}
+                />
+              ) : tool === 'backups' ? (
+                <BackupsPanel
+                  instance={current}
+                  mods={mods}
+                  onClose={() => setTool(undefined)}
                   onListChanged={() => void api.listInstances().then(setInstances)}
                   say={say}
                 />
