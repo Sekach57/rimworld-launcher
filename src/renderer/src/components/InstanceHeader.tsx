@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { AlertTriangle, Archive, Bug, CircleCheck, Copy, FolderOpen, MoreHorizontal, Pencil, Play, ScrollText, Trash2 } from 'lucide-react'
 import { previewUrl } from '@shared/api.ts'
 import type { Instance, Issue, ModInfo } from '@shared/types.ts'
@@ -73,12 +74,23 @@ export function InstanceHeader({ instance, mods, issues, ...on }: Props) {
 }
 
 function OverflowMenu(on: Pick<Props, 'onEdit' | 'onDuplicate' | 'onDelete' | 'onOpenFolder' | 'onTool'>) {
-  const [open, setOpen] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
+  const menuRef = useRef<HTMLDivElement>(null)
+  const [pos, setPos] = useState<{ top: number; right: number } | null>(null)
+  const open = pos !== null
+  const setOpen = (v: boolean): void => {
+    if (!v) return setPos(null)
+    // The hero clips overflow and is its own stacking context, so the menu is portaled to body.
+    const r = ref.current?.getBoundingClientRect()
+    if (r) setPos({ top: r.bottom + 8, right: window.innerWidth - r.right })
+  }
   useEffect(() => {
     if (!open) return
+    const close = (): void => setPos(null)
+    window.addEventListener('resize', close)
     const down = (e: MouseEvent) => {
-      if (!ref.current?.contains(e.target as Node)) setOpen(false)
+      const t = e.target as Node
+      if (!ref.current?.contains(t) && !menuRef.current?.contains(t)) setOpen(false)
     }
     const key = (e: KeyboardEvent) => {
       if (e.key === 'Escape') setOpen(false)
@@ -88,6 +100,7 @@ function OverflowMenu(on: Pick<Props, 'onEdit' | 'onDuplicate' | 'onDelete' | 'o
     return () => {
       window.removeEventListener('mousedown', down)
       window.removeEventListener('keydown', key)
+      window.removeEventListener('resize', close)
     }
   }, [open])
   const item = (fn: () => void) => () => {
@@ -105,8 +118,8 @@ function OverflowMenu(on: Pick<Props, 'onEdit' | 'onDuplicate' | 'onDelete' | 'o
       >
         <MoreHorizontal size={20} />
       </button>
-      {open && (
-        <div className="menu" role="menu">
+      {open && createPortal(
+        <div className="menu" role="menu" ref={menuRef} style={{ top: pos.top, right: pos.right }}>
           <button role="menuitem" onClick={item(on.onEdit)}>
             <Pencil size={15} /> Edit
           </button>
@@ -130,7 +143,8 @@ function OverflowMenu(on: Pick<Props, 'onEdit' | 'onDuplicate' | 'onDelete' | 'o
           <button role="menuitem" className="danger" onClick={item(on.onDelete)}>
             <Trash2 size={15} /> Delete
           </button>
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   )
