@@ -13,8 +13,9 @@ import {
 import { SortableContext, arrayMove, sortableKeyboardCoordinates, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 import { defaultRangeExtractor, useVirtualizer, type Range } from '@tanstack/react-virtual'
-import { ArrowDownAZ, GripVertical, Minus, PackageOpen, Plus, Rows3, Rows4, Search, X } from 'lucide-react'
+import { AlertTriangle, ArrowDownAZ, GripVertical, Minus, PackageOpen, Plus, Rows2, Rows3, Rows4, Search, X } from 'lucide-react'
 import { previewUrl } from '@shared/api.ts'
+import { moveWarnings } from '@shared/checks.ts'
 import type { Issue, ModInfo } from '@shared/types.ts'
 import { ISSUE_LABEL, SOURCE_LABEL } from '../format.ts'
 
@@ -26,6 +27,7 @@ interface Props {
   selected?: string
   loading: boolean
   canSort: boolean
+  gameVersion: string
   onSelect(uid: string | undefined): void
   onChange(mods: string[]): void
   onSort(): void
@@ -37,21 +39,32 @@ function matches(mod: ModInfo | undefined, uid: string, q: string): boolean {
   return hay.toLowerCase().includes(q)
 }
 
-const ROW_HEIGHT = { comfy: 64, compact: 40 }
+type Density = 'strip' | 'medium' | 'large'
+const ROW_HEIGHT: Record<Density, number> = { strip: 30, medium: 64, large: 112 }
+const DENSITIES: { id: Density; label: string; icon: typeof Rows4 }[] = [
+  { id: 'strip', label: 'Thin strips', icon: Rows4 },
+  { id: 'medium', label: 'Medium rows', icon: Rows3 },
+  { id: 'large', label: 'Large rows with previews', icon: Rows2 }
+]
+
+function loadDensity(): Density {
+  try {
+    const d = localStorage.getItem('rl.density')
+    if (d === 'strip' || d === 'medium' || d === 'large') return d
+    if (localStorage.getItem('rl.compact') === '1') return 'strip'
+  } catch {
+    /* storage can be unavailable */
+  }
+  return 'medium'
+}
 
 export function ModEditor(p: Props) {
   const [query, setQuery] = useState('')
-  const [compact, setCompact] = useState(() => {
-    try {
-      return localStorage.getItem('rl.compact') === '1'
-    } catch {
-      return false
-    }
-  })
+  const [density, setDensityState] = useState<Density>(loadDensity)
   const [dragging, setDragging] = useState<string | null>(null)
+  const [warning, setWarning] = useState<string[]>([])
   const q = query.trim().toLowerCase()
   const activeSet = useMemo(() => new Set(p.active), [p.active])
-  const density = compact ? 'compact' : 'comfy'
   const rowH = ROW_HEIGHT[density]
 
   const inactive = useMemo(
@@ -79,17 +92,18 @@ export function ModEditor(p: Props) {
     const from = p.active.indexOf(String(active.id))
     const to = p.active.indexOf(String(over.id))
     if (from < 0 || to < 0) return
-    p.onChange(arrayMove(p.active, from, to))
+    const next = arrayMove(p.active, from, to)
+    setWarning(moveWarnings(next, p.mods, p.gameVersion, String(active.id)))
+    p.onChange(next)
   }
 
   const enable = useCallback((uid: string) => p.onChange([...p.active, uid]), [p])
   const disable = useCallback((uid: string) => p.onChange(p.active.filter((u) => u !== uid)), [p])
 
-  const toggleDensity = () => {
-    const next = !compact
-    setCompact(next)
+  const setDensity = (d: Density) => {
+    setDensityState(d)
     try {
-      localStorage.setItem('rl.compact', next ? '1' : '0')
+      localStorage.setItem('rl.density', d)
     } catch {
       /* storage can be unavailable */
     }
@@ -115,14 +129,21 @@ export function ModEditor(p: Props) {
         <button className="btn" onClick={p.onSort} disabled={!p.canSort} title="Order active mods by their declared dependencies">
           <ArrowDownAZ size={16} /> Auto-sort
         </button>
-        <button
-          className="icon-btn flat"
-          onClick={toggleDensity}
-          aria-label={compact ? 'Use comfortable rows' : 'Use compact rows'}
-          title={compact ? 'Comfortable rows' : 'Compact rows'}
-        >
-          {compact ? <Rows3 size={18} /> : <Rows4 size={18} />}
-        </button>
+        <div className="seg" role="radiogroup" aria-label="Row size">
+          {DENSITIES.map(({ id, label, icon: Icon }) => (
+            <button
+              key={id}
+              role="radio"
+              aria-checked={density === id}
+              aria-label={label}
+              title={label}
+              className={density === id ? 'on' : ''}
+              onClick={() => setDensity(id)}
+            >
+              <Icon size={17} />
+            </button>
+          ))}
+        </div>
       </div>
 
       <div className="lists">
@@ -133,6 +154,7 @@ export function ModEditor(p: Props) {
           </div>
           <VirtualList
             ids={shownInactive}
+            key={density}
             rowHeight={rowH}
             empty={
               p.loading ? (
@@ -162,6 +184,21 @@ export function ModEditor(p: Props) {
             <span>Active, in load order</span>
             <span className="count">{filtering ? `${shownActive.length} / ${p.active.length}` : p.active.length}</span>
           </div>
+          {warning.length > 0 && (
+            <div className="drop-warn" role="alert">
+              <AlertTriangle size={16} />
+              <div className="drop-warn-text">
+                <b>This position breaks the load order</b>
+                {warning.slice(0, 3).map((w) => (
+                  <span key={w}>{w}</span>
+                ))}
+                {warning.length > 3 && <span>and {warning.length - 3} more</span>}
+              </div>
+              <button className="search-clear" aria-label="Dismiss warning" onClick={() => setWarning([])}>
+                <X size={14} />
+              </button>
+            </div>
+          )}
           <DndContext
             sensors={sensors}
             collisionDetection={closestCenter}
@@ -172,6 +209,7 @@ export function ModEditor(p: Props) {
             <SortableContext items={shownActive} strategy={verticalListSortingStrategy}>
               <VirtualList
                 ids={shownActive}
+                key={density}
                 rowHeight={rowH}
                 pinned={dragging}
                 empty={
@@ -222,6 +260,11 @@ export function ModEditor(p: Props) {
 }
 
 const noop = () => {}
+
+/** Descriptions carry RimWorld rich-text tags and BBCode; the row only needs plain text. */
+function plain(s: string): string {
+  return s.replace(/<[^>]+>|\[[^\]]+\]/g, '').replace(/\s+/g, ' ').trim().slice(0, 240)
+}
 
 function Empty(p: { title: string; text: string }) {
   return (
@@ -283,7 +326,7 @@ interface RowProps {
   mod?: ModInfo
   issues?: Issue[]
   index?: number
-  density: 'comfy' | 'compact'
+  density: Density
   selected: boolean
   toggleLabel: 'Enable' | 'Disable'
   onSelect(uid: string): void
@@ -333,7 +376,7 @@ const ModRow = memo(function ModRow({ uid, mod, issues, index, density, selected
       </span>
       <span className="mod-text">
         <span className="mod-name">{mod?.name ?? uid}</span>
-        {density === 'comfy' && (
+        {density !== 'strip' && (
           <span className="mod-sub">
             {mod ? (
               <>
@@ -346,6 +389,7 @@ const ModRow = memo(function ModRow({ uid, mod, issues, index, density, selected
             )}
           </span>
         )}
+        {density === 'large' && mod?.description && <span className="mod-desc">{plain(mod.description)}</span>}
       </span>
       {first && worst && (
         <span className={`badge ${worst}`} title={issues!.map((i) => i.message).join('\n')}>

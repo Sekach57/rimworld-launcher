@@ -273,6 +273,7 @@ export function App() {
                 active={current.activeMods}
                 installed={scan?.mods ?? []}
                 mods={mods}
+                gameVersion={gameVersion}
                 issues={byUid}
                 selected={selectedMod}
                 onSelect={setSelectedMod}

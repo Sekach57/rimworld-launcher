@@ -63,9 +63,36 @@ label.search input { padding-left: 36px; padding-right: 34px; height: 36px; }
 .thumb { flex: none; display: block; width: 48px; height: 48px; border-radius: 8px; overflow: hidden; background: var(--raised); box-shadow: var(--shadow-sm); }
 .thumb img { display: block; width: 100%; height: 100%; object-fit: cover; }
 .thumb-blank { display: grid; width: 100%; height: 100%; place-items: center; font: 700 18px/1 var(--font-ui); color: var(--faint); }
-.mod-row.compact { padding-left: 4px; gap: 10px; }
-.mod-row.compact .thumb { width: 28px; height: 28px; border-radius: 6px; }
-.mod-row.compact .mod-sub { display: none; }
+.mod-row.strip { padding-left: 4px; gap: 8px; border-radius: 6px; }
+.mod-row.strip .thumb { width: 20px; height: 20px; border-radius: 4px; box-shadow: none; }
+.mod-row.strip .thumb-blank { font-size: 11px; }
+.mod-row.strip .mod-name { font-size: 13px; }
+.mod-row.strip button.toggle { width: 24px; height: 24px; }
+.mod-row.large { gap: 14px; }
+.mod-row.large .thumb { width: 168px; height: 94px; border-radius: 8px; }
+.mod-row.large .thumb-blank { font-size: 28px; }
+.mod-desc {
+  font-size: 12px; line-height: 1.4; color: var(--faint); white-space: normal;
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+}
+
+.seg { display: inline-flex; flex: none; gap: 2px; padding: 2px; border: 1px solid var(--line-soft); border-radius: var(--radius-sm); background: var(--panel); }
+.seg button {
+  display: grid; place-items: center; width: 30px; height: 28px; padding: 0;
+  background: transparent; border: 0; border-radius: 6px; color: var(--muted);
+}
+.seg button:hover { color: var(--text); }
+.seg button.on { background: var(--raised); color: var(--text); box-shadow: var(--shadow-sm); }
+
+.drop-warn {
+  display: flex; align-items: flex-start; gap: 10px; margin: 0 10px 8px; padding: 10px 12px;
+  background: rgba(217, 164, 65, 0.12); border: 1px solid color-mix(in srgb, var(--warn) 50%, transparent);
+  border-radius: var(--radius-sm); animation: rise 0.15s var(--ease);
+}
+.drop-warn > svg { flex: none; color: var(--warn); margin-top: 1px; }
+.drop-warn-text { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; font-size: 12.5px; color: var(--muted); }
+.drop-warn-text b { color: var(--text); }
+.drop-warn .search-clear { position: static; flex: none; }
 
 .mod-text { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px; }
 .mod-name { font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }

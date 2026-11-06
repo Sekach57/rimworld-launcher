@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { checkMods, issuesByUid } from '../src/shared/checks.ts'
+import { checkMods, issuesByUid, moveWarnings } from '../src/shared/checks.ts'
 import { mod } from './helpers.ts'
 
 const V = '1.6.4633 rev1261'
@@ -91,5 +91,31 @@ describe('checkMods', () => {
   it('groups issues by mod', () => {
     const grouped = issuesByUid(checkMods(['ludeon.rimworld', 'ghost'], [core], V))
     expect([...grouped.keys()]).toEqual(['ghost'])
+  })
+})
+
+describe('moveWarnings', () => {
+  const lib = mod('the.lib', { name: 'The Lib' })
+  const user = mod('uses.lib', { name: 'User', modDependencies: [{ packageId: 'the.lib' }] })
+  const other = mod('other')
+  const mods = new Map([core, lib, user, other].map((m) => [m.uid, m]))
+
+  it('warns when a mod is dropped above what it needs', () => {
+    const list = ['ludeon.rimworld', 'uses.lib', 'the.lib']
+    expect(moveWarnings(list, mods, V, 'uses.lib')).toEqual(['User needs The Lib'])
+    expect(moveWarnings(list, mods, V, 'the.lib')).toEqual(['User needs The Lib'])
+  })
+
+  it('stays quiet for a fine drop or an unrelated mod', () => {
+    expect(moveWarnings(['ludeon.rimworld', 'the.lib', 'uses.lib'], mods, V, 'uses.lib')).toEqual([])
+    expect(moveWarnings(['ludeon.rimworld', 'uses.lib', 'the.lib', 'other'], mods, V, 'other')).toEqual([])
+  })
+
+  it('warns when a mod lands above Core, or Core drops below mods', () => {
+    const list = ['other', 'ludeon.rimworld', 'the.lib']
+    const coreName = core.name || core.packageIdRaw
+    expect(moveWarnings(list, mods, V, 'other')).toEqual([`${other.name || other.packageIdRaw} loads after ${coreName}`])
+    expect(moveWarnings(list, mods, V, 'ludeon.rimworld')).toEqual([`${other.name || other.packageIdRaw} loads after ${coreName}`])
+    expect(moveWarnings(list, mods, V, 'the.lib')).toEqual([])
   })
 })

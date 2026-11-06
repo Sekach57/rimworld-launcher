@@ -147,6 +147,38 @@ export function checkMods(active: string[], installed: ModInfo[], gameVersion: s
   return issues
 }
 
+/** Order problems that involve `moved` right after a drag, phrased like the order checks above. */
+export function moveWarnings(active: string[], mods: Map<string, ModInfo>, gameVersion: string, moved: string): string[] {
+  const list = [...new Set(active)]
+  const pos = new Map(list.map((uid, i) => [uid, i]))
+  if (!pos.has(moved)) return []
+  const out = new Set<string>()
+  const edges = buildEdges(list, mods, gameVersion)
+  const pkgOf = (uid: string) => mods.get(uid)?.packageId ?? packageIdOfUid(uid)
+  const firstOfficial = list.findIndex((uid) => isOfficial(pkgOf(uid)))
+  if (firstOfficial > 0) {
+    const allowed = precedesOfficial(list, edges, pkgOf)
+    const core = list[firstOfficial]
+    for (const uid of list.slice(0, firstOfficial)) {
+      if (allowed.has(uid) || !mods.has(uid)) continue
+      if (uid === moved || core === moved) out.add(`${label(uid, mods)} loads after ${label(core, mods)}`)
+    }
+  }
+  for (const e of edges) {
+    if (e.from !== moved && e.to !== moved) continue
+    if (pos.get(e.from)! < pos.get(e.to)!) continue
+    const subject = e.declaredBy
+    const other = subject === e.to ? e.from : e.to
+    const verb = REASON_TEXT[e.reason] ?? 'loads after'
+    out.add(
+      e.reason === 'loadBefore' || e.reason === 'forceLoadBefore'
+        ? `${label(subject, mods)} ${verb} ${label(other, mods)}`
+        : `${label(e.to, mods)} ${verb} ${label(e.from, mods)}`
+    )
+  }
+  return [...out]
+}
+
 export function issuesByUid(issues: Issue[]): Map<string, Issue[]> {
   const out = new Map<string, Issue[]>()
   for (const i of issues) out.set(i.uid, [...(out.get(i.uid) ?? []), i])
