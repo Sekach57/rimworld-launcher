@@ -1,14 +1,19 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { ChevronRight, ClipboardCopy, CircleCheck, FileSearch, FolderOpen, RefreshCw } from 'lucide-react'
 import type { LogResult } from '@shared/api.ts'
 import { CATEGORY_LABEL, formatReport, type LogIssue } from '@shared/logParser.ts'
-import type { Instance, ModInfo } from '@shared/types.ts'
+import type { Instance, Issue, ModInfo } from '@shared/types.ts'
+import { buildDiagnoses } from '@shared/diagnosis.ts'
 import { relativeTime } from '../format.ts'
+import { DiagnosisSection } from './DiagnosisSection.tsx'
 import { ToolPanel } from './ToolPanel.tsx'
 
 interface Props {
   instance: Instance
   mods: Map<string, ModInfo>
+  issues: Issue[]
+  gameVersion: string
+  onApply(mods: string[]): void
   /** Bumps when the renderer learns the game just exited, so the panel reloads. */
   refreshKey: number
   onClose(): void
@@ -16,7 +21,7 @@ interface Props {
   say(text: string, tone?: 'info' | 'error'): void
 }
 
-export function LogPanel({ instance, mods, refreshKey, onClose, onSelectMod, say }: Props) {
+export function LogPanel({ instance, mods, issues, gameVersion, onApply, refreshKey, onClose, onSelectMod, say }: Props) {
   const [result, setResult] = useState<LogResult>()
   const [loading, setLoading] = useState(true)
   const [open, setOpen] = useState<string>()
@@ -33,6 +38,10 @@ export function LogPanel({ instance, mods, refreshKey, onClose, onSelectMod, say
   useEffect(load, [load, refreshKey])
 
   const report = result?.report
+  const diagnoses = useMemo(
+    () => buildDiagnoses({ report: report ?? null, issues, installed: [...mods.values()], active: instance.activeMods, gameVersion }),
+    [report, issues, mods, instance.activeMods, gameVersion]
+  )
   const copy = async () => {
     if (!report) return
     await navigator.clipboard.writeText(formatReport(report, instance.name))
@@ -52,6 +61,8 @@ export function LogPanel({ instance, mods, refreshKey, onClose, onSelectMod, say
           <ClipboardCopy size={14} /> Copy report
         </button>
       </div>
+
+      <DiagnosisSection diagnoses={diagnoses} active={instance.activeMods} onApply={onApply} onSelectMod={onSelectMod} say={say} />
 
       {loading && !result ? (
         <p className="muted">Reading the log...</p>

@@ -12,6 +12,7 @@ interface Props {
   issues: Issue[]
   gameVersion: string
   onSelect(uid: string | undefined): void
+  onOpenLog?(): void
 }
 
 export function DetailsPanel(p: Props) {
@@ -19,7 +20,7 @@ export function DetailsPanel(p: Props) {
   return (
     <aside className="details">
       {!p.uid ? (
-        <IssueList issues={p.issues} mods={p.mods} gameVersion={p.gameVersion} onSelect={p.onSelect} />
+        <IssueList issues={p.issues} mods={p.mods} gameVersion={p.gameVersion} onSelect={p.onSelect} onOpenLog={p.onOpenLog} />
       ) : mod ? (
         <ModDetails key={mod.uid} mod={mod} {...p} />
       ) : (
@@ -87,7 +88,7 @@ function IssueGroup(props: {
   )
 }
 
-function IssueList(props: { issues: Issue[]; mods: Map<string, ModInfo>; gameVersion: string; onSelect(uid: string): void }) {
+function IssueList(props: { issues: Issue[]; mods: Map<string, ModInfo>; gameVersion: string; onSelect(uid: string): void; onOpenLog?(): void }) {
   const errors = props.issues.filter((i) => i.severity === 'error')
   const rest = props.issues.filter((i) => i.severity !== 'error')
   // Mods that simply do not list the current game version are common and
@@ -108,6 +109,11 @@ function IssueList(props: { issues: Issue[]; mods: Map<string, ModInfo>; gameVer
       ) : (
         <>
           <p className="muted">Select an entry to jump to the mod.</p>
+          {props.onOpenLog && (
+            <button className="link" onClick={props.onOpenLog}>
+              Open the error breakdown with one-click fixes
+            </button>
+          )}
           <IssueGroup title="Errors" tone="error" issues={errors} mods={props.mods} onSelect={props.onSelect} />
           <IssueGroup title="Warnings" tone="warn" issues={warnings} mods={props.mods} onSelect={props.onSelect} />
           <IssueGroup title={foldTitle} tone="info" issues={unlisted} mods={props.mods} onSelect={props.onSelect} />

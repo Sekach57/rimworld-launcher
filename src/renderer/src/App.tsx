@@ -285,6 +285,9 @@ export function App() {
                 <LogPanel
                   instance={current}
                   mods={mods}
+                  issues={issues}
+                  gameVersion={gameVersion}
+                  onApply={setActive}
                   refreshKey={logKey}
                   onClose={() => setTool(undefined)}
                   onSelectMod={(uid) => {
@@ -322,6 +325,7 @@ export function App() {
                 issues={issues}
                 gameVersion={gameVersion}
                 onSelect={setSelectedMod}
+                onOpenLog={() => setTool('log')}
               />
               )}
             </div>

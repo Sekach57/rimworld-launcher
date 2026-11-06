@@ -40,3 +40,15 @@
 .issue-fold { width: 100%; text-align: left; display: flex; align-items: center; gap: 6px; padding: 8px 10px; background: transparent; border: 1px dashed var(--line); border-radius: var(--radius-sm); color: var(--muted); cursor: pointer; font: inherit; font-size: 12.5px; }
 .issue-fold:hover { background: var(--hover); }
 .issue-fold .turn { transform: rotate(90deg); }
+
+/* Error breakdown */
+.diag { margin: 4px 0 14px; }
+.diag-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 8px; flex-wrap: wrap; }
+.diag-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.diag-card { background: var(--raised); border: 1px solid var(--line-soft); border-left: 3px solid var(--muted); border-radius: 6px; padding: 10px 12px; }
+.diag-card.sev-fixable { border-left-color: var(--ok); }
+.diag-card.sev-mod-bug { border-left-color: var(--error); }
+.diag-card.sev-info { border-left-color: var(--accent); }
+.diag-top { display: flex; align-items: center; gap: 8px; }
+.diag-cause { margin: 4px 0 6px; color: var(--muted); font-size: 12.5px; }
+.diag-mods, .diag-fixes { display: flex; flex-wrap: wrap; gap: 6px; margin: 6px 0; align-items: center; }
