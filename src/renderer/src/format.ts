@@ -1,4 +1,4 @@
-import type { IssueKind, ModSource } from '@shared/types.ts'
+import type { IssueKind, ModInfo, ModSource } from '@shared/types.ts'
 
 export function relativeTime(iso: string | undefined, now = Date.now()): string {
   if (!iso) return 'never'
@@ -43,3 +43,17 @@ export const ISSUE_LABEL: Record<IssueKind, string> = {
 }
 
 export const SWATCHES = ['#5fb3a1', '#6c9ee0', '#d9a441', '#e5534b', '#b48ead', '#7fb069', '#e07a5f', '#8f99a8']
+
+/** Preview image paths for an instance cover: workshop and local mods first, official ones as filler. */
+export function coverPaths(activeMods: string[], mods: Map<string, ModInfo>, count: number): string[] {
+  const own: string[] = []
+  const official: string[] = []
+  for (const uid of activeMods) {
+    const m = mods.get(uid)
+    if (!m?.previewPath) continue
+    if (m.source === 'official') official.push(m.previewPath)
+    else own.push(m.previewPath)
+    if (own.length >= count) break
+  }
+  return [...own, ...official].slice(0, count)
+}

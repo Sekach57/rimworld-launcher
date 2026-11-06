@@ -1,61 +1,126 @@
-import type { Instance, Issue } from '@shared/types.ts'
-import { relativeTime } from '../format.ts'
-import { Mark } from './Mark.tsx'
+import { useEffect, useRef, useState } from 'react'
+import { AlertTriangle, CircleCheck, Copy, FolderOpen, MoreHorizontal, Pencil, Play, Trash2 } from 'lucide-react'
+import { previewUrl } from '@shared/api.ts'
+import type { Instance, Issue, ModInfo } from '@shared/types.ts'
+import { coverPaths, relativeTime } from '../format.ts'
 
 interface Props {
   instance: Instance
+  mods: Map<string, ModInfo>
   issues: Issue[]
-  canSort: boolean
   onEdit(): void
   onDuplicate(): void
   onDelete(): void
   onOpenFolder(): void
-  onSort(): void
   onLaunch(): void
 }
 
-export function InstanceHeader({ instance, issues, canSort, ...on }: Props) {
+export function InstanceHeader({ instance, mods, issues, ...on }: Props) {
   const errors = issues.filter((i) => i.severity === 'error').length
   const warnings = issues.length - errors
+  const covers = coverPaths(instance.activeMods, mods, 7)
   return (
-    <header className="instance-header">
-      <Mark color={instance.color} letter={instance.letter} size={44} />
-      <div className="header-text">
-        <h1>{instance.name}</h1>
-        <div className="header-meta">
-          <span>{instance.activeMods.length} active</span>
-          <span>Created {new Date(instance.createdAt).toLocaleDateString()}</span>
-          <span>Played {relativeTime(instance.lastPlayedAt)}</span>
-          {errors > 0 && <span className="pill error">{errors} error{errors > 1 ? 's' : ''}</span>}
-          {warnings > 0 && <span className="pill warn">{warnings} warning{warnings > 1 ? 's' : ''}</span>}
-          {issues.length === 0 && <span className="pill ok">No problems</span>}
-        </div>
-        {instance.notes && <p className="header-notes">{instance.notes}</p>}
+    <header className="hero" style={{ ['--inst' as string]: instance.color }}>
+      <div className="hero-art" aria-hidden>
+        {covers.map((c, i) => (
+          <img key={c + i} src={previewUrl(c)} alt="" />
+        ))}
       </div>
-      <div className="header-actions">
-        <div className="btn-group">
-          <button className="btn small" onClick={on.onEdit}>
-            Edit
-          </button>
-          <button className="btn small" onClick={on.onDuplicate}>
-            Duplicate
-          </button>
-          <button className="btn small" onClick={on.onOpenFolder}>
-            Open folder
-          </button>
-          <button className="btn small danger-text" onClick={on.onDelete}>
-            Delete
-          </button>
+      <div className="hero-shade" aria-hidden />
+      <div className="hero-body">
+        <div className="hero-text">
+          <span className="hero-eyebrow">
+            <span className="hero-letter" style={{ background: instance.color }}>
+              {instance.letter}
+            </span>
+            Instance
+          </span>
+          <h1>{instance.name}</h1>
+          <div className="hero-stats">
+            <span className="stat">
+              <b>{instance.activeMods.length}</b>
+              <span>active mods</span>
+            </span>
+            <span className="stat">
+              <b className="text">{relativeTime(instance.lastPlayedAt)}</b>
+              <span>last played</span>
+            </span>
+            {issues.length === 0 ? (
+              <span className="stat ok">
+                <CircleCheck size={16} /> No problems
+              </span>
+            ) : (
+              <span className={`stat ${errors ? 'error' : 'warn'}`}>
+                <AlertTriangle size={16} />
+                {errors > 0 && `${errors} error${errors > 1 ? 's' : ''}`}
+                {errors > 0 && warnings > 0 && ', '}
+                {warnings > 0 && `${warnings} warning${warnings > 1 ? 's' : ''}`}
+              </span>
+            )}
+          </div>
+          {instance.notes && <p className="hero-notes">{instance.notes}</p>}
         </div>
-        <div className="btn-group">
-          <button className="btn" onClick={on.onSort} disabled={!canSort}>
-            Auto-sort
-          </button>
-          <button className="btn primary launch" onClick={on.onLaunch}>
-            Launch
+        <div className="hero-actions">
+          <OverflowMenu {...on} />
+          <button className="play" onClick={on.onLaunch}>
+            <Play size={20} fill="currentColor" strokeWidth={0} /> Play
           </button>
         </div>
       </div>
     </header>
+  )
+}
+
+function OverflowMenu(on: Pick<Props, 'onEdit' | 'onDuplicate' | 'onDelete' | 'onOpenFolder'>) {
+  const [open, setOpen] = useState(false)
+  const ref = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    if (!open) return
+    const down = (e: MouseEvent) => {
+      if (!ref.current?.contains(e.target as Node)) setOpen(false)
+    }
+    const key = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setOpen(false)
+    }
+    window.addEventListener('mousedown', down)
+    window.addEventListener('keydown', key)
+    return () => {
+      window.removeEventListener('mousedown', down)
+      window.removeEventListener('keydown', key)
+    }
+  }, [open])
+  const item = (fn: () => void) => () => {
+    setOpen(false)
+    fn()
+  }
+  return (
+    <div className="menu-wrap" ref={ref}>
+      <button
+        className="icon-btn"
+        aria-label="Instance actions"
+        aria-haspopup="menu"
+        aria-expanded={open}
+        onClick={() => setOpen(!open)}
+      >
+        <MoreHorizontal size={20} />
+      </button>
+      {open && (
+        <div className="menu" role="menu">
+          <button role="menuitem" onClick={item(on.onEdit)}>
+            <Pencil size={15} /> Edit
+          </button>
+          <button role="menuitem" onClick={item(on.onDuplicate)}>
+            <Copy size={15} /> Duplicate
+          </button>
+          <button role="menuitem" onClick={item(on.onOpenFolder)}>
+            <FolderOpen size={15} /> Open folder
+          </button>
+          <hr />
+          <button role="menuitem" className="danger" onClick={item(on.onDelete)}>
+            <Trash2 size={15} /> Delete
+          </button>
+        </div>
+      )}
+    </div>
   )
 }

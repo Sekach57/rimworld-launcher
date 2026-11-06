@@ -1,24 +1,31 @@
-# Handoff: launcher core (stage 1)
+# HANDOFF: rimworld-launcher UI redesign
 
-Goal: Electron + Vite + React + TS desktop launcher for RimWorld mods with separate instances (own save folder and mod list each).
+Branch: `task/launcher-design` (not pushed, not merged).
 
-Done (branch `task/launcher-core`):
-- Settings autodetect (Steam libraryfolders.vdf), edit, persist in userData/settings.json.
-- Scanner for Data, Mods and Workshop: full About.xml, case-insensitive Preview.png, Steam id from folder, broken XML falls back to a regex read.
-- Instances in userData/instances/<id>/data, launched with `-savedatafolder`. Create, edit, duplicate, delete to recycle bin, import from the default ModsConfig.xml (read only).
-- Mod editor: two lists, search, dnd-kit reorder, toggle, details panel; ModsConfig.xml written in game format (BOM, CRLF).
-- Auto-sort (topological, official first), warnings (not installed, missing deps, order, cycles, incompatible, version, duplicate ids).
-- Tests: 41 Vitest cases, including the launch command builder. `npm run scan` checks real folders.
+## Goal
+Game-launcher look (Onyx / Steam library feel) for the Electron + React + TS RimWorld mod launcher.
 
-Next:
-- Try launch by hand once (never done by the agent), confirm the game uses the instance folder.
-- UI polish: keyboard reorder hints, virtualised lists if 500+ mods feel slow, filter by source.
-- Stage 2 ideas: Player.log reader, bisect, companion mod.
+## Done
+- Hero banner from mod previews, big name, stats, one Play button, overflow menu.
+- Sidebar as library with cover thumbnails.
+- Virtualised dual-list mod editor (rows: thumb, name, author, source chip, badges; hover/selected/drag states).
+- Problems panel grouped by severity, click selects mod.
+- Details panel: big preview, dependency chips, versions.
+- Warm earth-tone dark palette, bundled Fraunces + Instrument Sans, lucide icons, reduced-motion respected.
+- CSS split into `src/renderer/src/styles/{base,library,editor}.css`.
+- Checks: typecheck clean, 41 tests in 6 files pass, build OK.
 
-Key files: src/main/{scanner,instances,detect,launch}.ts, src/shared/{about,sort,checks,modsConfig}.ts, src/renderer/src/App.tsx and components/, scripts/scan-real.ts.
+## Next
+- Hero text contrast over busy preview images (stronger scrim).
+- Order badges sit far from the row's right edge at 1920.
+- Author names truncate in the active column at 1200.
+- Renderer bundle is one ~973 kB chunk; consider code splitting.
+- New-instance dialog screenshot was not captured properly; recheck dialog styling.
 
-Dev tips: `LAUNCHER_USER_DATA=<dir>` isolates userData; `LAUNCHER_SCREENSHOT=<png>` captures the window and quits. Instance ids must match `[a-z0-9]{6,32}`.
+## Key files
+- `src/renderer/src/App.tsx`, `components/{InstanceHeader,Sidebar,ModEditor,DetailsPanel}.tsx`
+- `src/renderer/src/styles/*.css`, `src/renderer/src/format.ts`
+- `src/main/index.ts` (test hooks `LAUNCHER_USER_DATA`, `LAUNCHER_SCREENSHOT`)
 
-Open questions:
-- 35 active mods in the current game list do not declare 1.7. Show as warning (current) or hide?
-- Renderer bundle is one 866 kB chunk; fine for desktop, revisit if startup feels slow.
+## Open questions
+- Keep the single-chunk bundle or split it?

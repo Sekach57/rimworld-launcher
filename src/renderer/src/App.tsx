@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
+import { FolderCog, Library } from 'lucide-react'
 import type { InstanceInput } from '@shared/api.ts'
 import { checkMods, issuesByUid } from '@shared/checks.ts'
 import { sortMods } from '@shared/sort.ts'
@@ -183,6 +184,7 @@ export function App() {
     <div className="app">
       <Sidebar
         instances={instances}
+        mods={mods}
         selectedId={view === 'instance' ? selectedId : undefined}
         settingsOpen={view === 'settings'}
         onSelect={(id) => {
@@ -211,14 +213,13 @@ export function App() {
           <>
             <InstanceHeader
               instance={current}
+              mods={mods}
               issues={issues}
               onEdit={() => setDialog({ kind: 'edit', instance: current })}
               onDuplicate={duplicate}
               onDelete={() => setDialog({ kind: 'delete', instance: current })}
               onOpenFolder={() => api.openInstanceFolder(current.id).catch((e) => say(errorText(e), 'error'))}
-              onSort={autoSort}
               onLaunch={launch}
-              canSort={Boolean(scan)}
             />
             <div className="workspace">
               <ModEditor
@@ -229,6 +230,8 @@ export function App() {
                 selected={selectedMod}
                 onSelect={setSelectedMod}
                 onChange={setActive}
+                onSort={autoSort}
+                canSort={Boolean(scan)}
                 loading={!scan}
               />
               <DetailsPanel
@@ -305,6 +308,7 @@ function EmptyState(props: { hasGame: boolean; onCreate(): void; onImport(): voi
     <div className="empty">
       {props.hasGame ? (
         <>
+          <Library className="empty-icon" size={44} strokeWidth={1.4} />
           <h1>No instances yet</h1>
           <p>
             An instance is a separate save folder with its own mod list. Start from your current game setup, or from
@@ -321,6 +325,7 @@ function EmptyState(props: { hasGame: boolean; onCreate(): void; onImport(): voi
         </>
       ) : (
         <>
+          <FolderCog className="empty-icon" size={44} strokeWidth={1.4} />
           <h1>Game folder not set</h1>
           <p>Point the launcher at your RimWorld install to scan mods.</p>
           <button className="btn primary" onClick={props.onSettings}>

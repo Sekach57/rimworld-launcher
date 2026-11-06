@@ -128,7 +128,7 @@ function createWindow(): void {
     minWidth: 1000,
     minHeight: 640,
     show: false,
-    backgroundColor: '#111214',
+    backgroundColor: '#14110f',
     autoHideMenuBar: true,
     title: 'RimWorld Launcher',
     webPreferences: {
