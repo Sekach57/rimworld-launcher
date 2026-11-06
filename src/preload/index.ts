@@ -23,6 +23,10 @@ const api = {
   launch: call('launch'),
   analyzeLog: call('analyzeLog'),
   openLogFile: call('openLogFile'),
+  bisectGet: call('bisectGet'),
+  bisectStart: call('bisectStart'),
+  bisectAnswer: call('bisectAnswer'),
+  bisectCancel: call('bisectCancel'),
   onGameExit: (cb: (e: GameExit) => void) => {
     const fn = (_: unknown, e: GameExit) => cb(e)
     ipcRenderer.on('game-exit', fn)

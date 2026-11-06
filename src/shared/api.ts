@@ -1,3 +1,4 @@
+import type { BisectState } from './bisect.ts'
 import type { LogReport } from './logParser.ts'
 import type { Instance, ScanResult, Settings } from './types.ts'
 
@@ -52,6 +53,13 @@ export interface LauncherApi {
   launch(id: string): Promise<LaunchResult>
   analyzeLog(id: string): Promise<LogResult>
   openLogFile(id: string): Promise<void>
+  /** Current bisect for the instance, if one is in progress or just finished. */
+  bisectGet(id: string): Promise<BisectState | undefined>
+  bisectStart(id: string): Promise<BisectState>
+  /** problemRemains: the problem is still there with the current half enabled. Restores the list when it finishes. */
+  bisectAnswer(id: string, problemRemains: boolean): Promise<BisectState>
+  /** Puts the original list back and forgets the bisect. */
+  bisectCancel(id: string): Promise<void>
   /** Subscribes to game exit events. Returns an unsubscribe function. */
   onGameExit(cb: (e: GameExit) => void): () => void
 }

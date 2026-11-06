@@ -10,6 +10,7 @@ import { Sidebar } from './components/Sidebar.tsx'
 
 const SettingsView = lazy(() => import('./components/SettingsView.tsx').then((m) => ({ default: m.SettingsView })))
 const DetailsPanel = lazy(() => import('./components/DetailsPanel.tsx').then((m) => ({ default: m.DetailsPanel })))
+const BisectPanel = lazy(() => import('./components/BisectPanel.tsx').then((m) => ({ default: m.BisectPanel })))
 const LogPanel = lazy(() => import('./components/LogPanel.tsx').then((m) => ({ default: m.LogPanel })))
 const InstanceDialog = lazy(() => import('./components/Dialogs.tsx').then((m) => ({ default: m.InstanceDialog })))
 const ConfirmDialog = lazy(() => import('./components/Dialogs.tsx').then((m) => ({ default: m.ConfirmDialog })))
@@ -283,6 +284,19 @@ export function App() {
                     setSelectedMod(uid)
                     setTool(undefined)
                   }}
+                  say={say}
+                />
+              ) : tool === 'bisect' ? (
+                <BisectPanel
+                  instance={current}
+                  mods={mods}
+                  onClose={() => setTool(undefined)}
+                  onSelectMod={(uid) => {
+                    setSelectedMod(uid)
+                    setTool(undefined)
+                  }}
+                  onLaunch={doLaunch}
+                  onListChanged={() => void api.listInstances().then(setInstances)}
                   say={say}
                 />
               ) : (

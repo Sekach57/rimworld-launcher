@@ -5,13 +5,14 @@ import { pathToFileURL } from 'node:url'
 import { app, BrowserWindow, dialog, ipcMain, net, protocol, shell } from 'electron'
 import { PREVIEW_SCHEME, type GameExit, type InstanceInput, type LaunchResult, type LogResult } from '../shared/api.ts'
 import { buildLaunchCommand } from '../shared/launch.ts'
-import { OFFICIAL_ORDER, CORE_ID } from '../shared/sort.ts'
+import { OFFICIAL_ORDER, CORE_ID, isOfficial, packageIdOfUid } from '../shared/sort.ts'
 import type { ScanResult, Settings } from '../shared/types.ts'
 import { detectSettings, readGameVersion } from './detect.ts'
 import { InstanceStore, readDefaultModsConfig } from './instances.ts'
 import { exists, scanMods } from './scanner.ts'
 import { loadSettings, saveSettings } from './settings.ts'
-import { analyzeLogFile, buildAttribMods, findLog } from './tools.ts'
+import { answerBisect, restoreList, startBisect, testList, type BisectState, type DepMap } from '../shared/bisect.ts'
+import { analyzeLogFile, buildAttribMods, clearBisect, findLog, readBisect, writeBisect } from './tools.ts'
 
 // Lets a test run use a throwaway profile instead of the real one.
 if (process.env.LAUNCHER_USER_DATA) app.setPath('userData', resolve(process.env.LAUNCHER_USER_DATA))
@@ -77,6 +78,37 @@ async function analyzeInstanceLog(id: string, since?: number): Promise<LogResult
   return analyzeLogFile(instances.dataDir(id), attrib)
 }
 
+/** Active-mod dependency map (uid -> uids), using the dependencies listed for any game version. */
+async function activeDeps(active: string[]): Promise<DepMap> {
+  const mods = new Map((await scan()).mods.map((m) => [m.uid, m]))
+  const byPkg = new Map<string, string[]>()
+  for (const uid of active) {
+    const pkg = mods.get(uid)?.packageId ?? packageIdOfUid(uid)
+    byPkg.set(pkg, [...(byPkg.get(pkg) ?? []), uid])
+  }
+  const out: DepMap = {}
+  for (const uid of active) {
+    const m = mods.get(uid)
+    if (!m) continue
+    const all = [...m.modDependencies, ...Object.values(m.modDependenciesByVersion).flat()]
+    out[uid] = [...new Set(all.flatMap((d) => byPkg.get(d.packageId.toLowerCase()) ?? []))].filter((u) => u !== uid)
+  }
+  return out
+}
+
+const isOfficialUid = (uid: string) => isOfficial(packageIdOfUid(uid))
+
+/** Writes a list to the instance's ModsConfig only. No snapshot, no scan side effects. */
+async function writeList(id: string, list: string[]): Promise<void> {
+  await store().setActiveMods(id, list, (await scan()).gameVersion, await installedExpansions())
+}
+
+async function saveBisect(id: string, state: BisectState): Promise<BisectState> {
+  if (state.done) await writeList(id, restoreList(state))
+  await writeBisect(store().dir(id), state)
+  return state
+}
+
 function notifyExit(e: GameExit): void {
   for (const w of BrowserWindow.getAllWindows()) w.webContents.send('game-exit', e)
 }
@@ -126,11 +158,31 @@ function registerIpc(): void {
     if (!found) throw new Error('No Player.log found yet. Start the game once first.')
     shell.showItemInFolder(found.path)
   })
+  handle('bisectGet', (id: string) => readBisect(store().dir(id)))
+  handle('bisectStart', async (id: string) => {
+    const inst = await store().get(id)
+    const state = startBisect(inst.activeMods, await activeDeps(inst.activeMods), isOfficialUid)
+    return saveBisect(id, state)
+  })
+  handle('bisectAnswer', async (id: string, remains: boolean) => {
+    const state = await readBisect(store().dir(id))
+    if (!state) throw new Error('No bisect in progress.')
+    const original = state.original
+    return saveBisect(id, answerBisect(state, remains, await activeDeps(original)))
+  })
+  handle('bisectCancel', async (id: string) => {
+    const state = await readBisect(store().dir(id))
+    if (state) await writeList(id, restoreList(state))
+    await clearBisect(store().dir(id))
+  })
   handle('launch', async (id: string): Promise<LaunchResult> => {
     try {
       const s = await getSettings()
       const instances = store()
       await instances.get(id)
+      // During a bisect the test list goes to this instance's ModsConfig only.
+      const bisect = await readBisect(instances.dir(id))
+      if (bisect && !bisect.done) await writeList(id, testList(bisect))
       const cmd = buildLaunchCommand(s.gameDir, s.exeName, instances.dataDir(id))
       if (!(await exists(cmd.file))) return { ok: false, error: `Game executable not found: ${cmd.file}` }
       const child = spawn(cmd.file, cmd.args, { cwd: cmd.cwd, detached: true, stdio: 'ignore', windowsHide: false })

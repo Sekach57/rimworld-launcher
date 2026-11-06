@@ -1,9 +1,10 @@
 /** Main-process helpers for the log, bisect and backup tools. No Electron imports. */
-import { readdir, readFile, stat } from 'node:fs/promises'
+import { mkdir, readdir, readFile, rm, stat, writeFile } from 'node:fs/promises'
 import { homedir } from 'node:os'
 import { join } from 'node:path'
 import type { LogResult } from '../shared/api.ts'
 import { parseLog, type AttribMod } from '../shared/logParser.ts'
+import type { BisectState } from '../shared/bisect.ts'
 import type { ModInfo } from '../shared/types.ts'
 
 const MAX_LOG_BYTES = 40 * 1024 * 1024
@@ -75,4 +76,22 @@ export async function analyzeLogFile(dataDir: string, attrib: AttribMod[], home?
   let text = await readFile(found.path, 'utf8')
   if (text.length > MAX_LOG_BYTES) text = text.slice(-MAX_LOG_BYTES)
   return { found: true, path: found.path, source: found.source, modifiedAt: found.modifiedAt, report: parseLog(text, attrib) }
+}
+
+/** Bisect state lives in <instance dir>/bisect.json. */
+export async function readBisect(instDir: string): Promise<BisectState | undefined> {
+  try {
+    return JSON.parse(await readFile(join(instDir, 'bisect.json'), 'utf8')) as BisectState
+  } catch {
+    return undefined
+  }
+}
+
+export async function writeBisect(instDir: string, state: BisectState): Promise<void> {
+  await mkdir(instDir, { recursive: true })
+  await writeFile(join(instDir, 'bisect.json'), JSON.stringify(state, null, 2), 'utf8')
+}
+
+export async function clearBisect(instDir: string): Promise<void> {
+  await rm(join(instDir, 'bisect.json'), { force: true })
 }
