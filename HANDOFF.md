@@ -1,28 +1,26 @@
-# Handoff: error breakdown (branch task/launcher-errors)
+# Handoff: five launcher features (branch task/launcher-steam)
 
-Goal: turn Player.log errors and Problems-list entries into a few plain
-diagnoses with one-click fixes.
+Goal: drag-and-drop, categories, three list densities, Steam link, profile
+achievements.
 
 Done
-- src/shared/diagnosis.ts: pure rules (dependency, incompatible, load order,
-  version info, XML defs with author report, Harmony patch errors, noise,
-  root-cause collapsing), applyFix, applyAllSafe, summarize.
-- tests/diagnosis.test.ts: 9 tests; full suite 81 passing.
-- openUrl IPC (steamcommunity.com links only) for Workshop fix buttons.
-- DiagnosisSection at the top of the Log panel; link from the Problems list.
-  Fixes go through App.setActive -> api.setActiveMods, which snapshots first.
-- Typecheck and build clean.
+- Stage A (densities, drag-and-drop): 2d25dcd.
+- Stage B (categories: auto plus manual override, list filter): 6fcf37b.
+- Stage C (Steam): 51ab1d0. Local account, avatar and Workshop install data
+  from Steam files; optional Web API key (read-only) stored with safeStorage
+  in userData/steam.json, renderer sees only the last 4 chars. Workshop
+  details cache in steam-cache.json, errors redact `key=`.
+- 103 tests pass, typecheck clean, exe built and checked over CDP: Settings
+  shows the Steam section, no key text in the DOM.
 
 Next
-- Try it against a real Player.log after a game run.
-- Add more noise patterns and mod-specific rules as real logs show them.
-- Narrow Log panel: cards scroll under the buttons; consider a wider panel.
+- Stage D: local profile achievements (pure rules in src/shared, stats kept
+  in userData, a Profile view).
+- Try a real key: Settings, Steam, Save key, Refresh.
 
 Key files
-- src/shared/diagnosis.ts, tests/diagnosis.test.ts
-- src/renderer/src/components/DiagnosisSection.tsx, LogPanel.tsx, DetailsPanel.tsx
-- src/renderer/src/styles/tools.css (.diag-*)
+- src/main/steam.ts, src/main/steamParse.ts, tests/steam.test.ts
+- src/renderer/src/components/SettingsView.tsx (SteamSection), DetailsPanel.tsx
 
 Open questions
-- "Fix all safe" applies every list fix, including enabling mods. Keep as is?
-- Incompatible-mod cards offer disable on either side; no preferred side.
+- Nothing merged into main yet; branches chain A -> B -> C.
