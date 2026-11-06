@@ -35,6 +35,12 @@ function errorText(e: unknown): string {
   return raw.replace(/^Error invoking remote method '[^']+': (Error: )?/, '')
 }
 
+/** Test hook: ?openView=log|bisect|backups opens that tool on start. */
+function openViewFromUrl(): 'log' | 'bisect' | 'backups' | undefined {
+  const v = new URLSearchParams(location.search).get('openView')
+  return v === 'log' || v === 'bisect' || v === 'backups' ? v : undefined
+}
+
 export function App() {
   const api = window.api
   const [settings, setSettings] = useState<Settings>()
@@ -46,7 +52,7 @@ export function App() {
   const [dialog, setDialog] = useState<Dialog>(null)
   const [notice, setNotice] = useState<Notice>()
   const [selectedMod, setSelectedMod] = useState<string>()
-  const [tool, setTool] = useState<'log' | 'bisect' | 'backups'>()
+  const [tool, setTool] = useState<'log' | 'bisect' | 'backups' | undefined>(openViewFromUrl)
   const [exitInfo, setExitInfo] = useState<GameExit>()
   const [logKey, setLogKey] = useState(0)
 

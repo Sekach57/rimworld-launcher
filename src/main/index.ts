@@ -293,8 +293,10 @@ function createWindow(): void {
   }
 
   const devUrl = process.env.ELECTRON_RENDERER_URL
-  if (!app.isPackaged && devUrl) void win.loadURL(devUrl)
-  else void win.loadFile(join(import.meta.dirname, '../renderer/index.html'))
+  // Test hook: LAUNCHER_OPEN_VIEW=log|bisect|backups opens that tool for the first instance.
+  const query = process.env.LAUNCHER_OPEN_VIEW ? { openView: process.env.LAUNCHER_OPEN_VIEW } : undefined
+  if (!app.isPackaged && devUrl) void win.loadURL(query ? `${devUrl}?openView=${query.openView}` : devUrl)
+  else void win.loadFile(join(import.meta.dirname, '../renderer/index.html'), { query })
 }
 
 if (!app.requestSingleInstanceLock()) {
