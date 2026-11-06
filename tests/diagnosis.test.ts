@@ -85,7 +85,7 @@ describe('other rules', () => {
       'Config error: Exception parsing XML in RimExtraThing',
       '  at RimExtra.Loader.Load () [0x00002] in <abc>:0'
     ].join('\n')
-    const diags = buildDiagnoses({ ...input(['ludeon.rimworld']), report: parseLog(log, attrib) })
+    const diags = buildDiagnoses({ ...input(['ludeon.rimworld'], [core, mod('rim.extra', { name: 'Rim Extra' })]), report: parseLog(log, attrib) })
     const bug = diags.filter((d) => d.severity === 'mod-bug')
     expect(bug.map((d) => d.id)).toEqual(['xml:rim.extra'])
     expect(bug[0].covers).toBe(2)
