@@ -1,4 +1,6 @@
 import type { BisectState } from './bisect.ts'
+import type { ExportFormat } from './modlistIO.ts'
+import type { Snapshot } from './snapshots.ts'
 import type { LogReport } from './logParser.ts'
 import type { Instance, ScanResult, Settings } from './types.ts'
 
@@ -26,6 +28,14 @@ export interface LogResult {
 }
 
 /** Sent to the renderer when a game started by the launcher exits. */
+export interface ImportPreview {
+  file: string
+  name?: string
+  activeMods: string[]
+  /** Ids in the file that no installed mod provides. */
+  missing: string[]
+}
+
 export interface GameExit {
   id: string
   code: number | null
@@ -60,6 +70,16 @@ export interface LauncherApi {
   bisectAnswer(id: string, problemRemains: boolean): Promise<BisectState>
   /** Puts the original list back and forgets the bisect. */
   bisectCancel(id: string): Promise<void>
+  snapshotList(id: string): Promise<Snapshot[]>
+  /** Manual, named snapshot of the current list. */
+  snapshotSave(id: string, name: string): Promise<Snapshot[]>
+  snapshotDelete(id: string, snapshotId: string): Promise<Snapshot[]>
+  /** Takes an automatic snapshot of the current list, then writes the snapshot's list. */
+  snapshotRestore(id: string, snapshotId: string): Promise<Instance>
+  /** Save dialog, then writes the list there. Resolves to the path, or undefined if cancelled. */
+  exportList(id: string, format: ExportFormat): Promise<string | undefined>
+  /** Open dialog and parse. Does not change anything; the renderer applies it after a preview. */
+  importList(): Promise<ImportPreview | undefined>
   /** Subscribes to game exit events. Returns an unsubscribe function. */
   onGameExit(cb: (e: GameExit) => void): () => void
 }

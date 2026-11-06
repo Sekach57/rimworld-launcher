@@ -1,5 +1,5 @@
 import { spawn } from 'node:child_process'
-import { writeFile } from 'node:fs/promises'
+import { readFile, writeFile } from 'node:fs/promises'
 import { extname, join, resolve, sep } from 'node:path'
 import { pathToFileURL } from 'node:url'
 import { app, BrowserWindow, dialog, ipcMain, net, protocol, shell } from 'electron'
@@ -12,7 +12,8 @@ import { InstanceStore, readDefaultModsConfig } from './instances.ts'
 import { exists, scanMods } from './scanner.ts'
 import { loadSettings, saveSettings } from './settings.ts'
 import { answerBisect, restoreList, startBisect, testList, type BisectState, type DepMap } from '../shared/bisect.ts'
-import { analyzeLogFile, buildAttribMods, clearBisect, findLog, readBisect, writeBisect } from './tools.ts'
+import { missingMods, parseList, serializeList, type ExportFormat } from '../shared/modlistIO.ts'
+import { analyzeLogFile, buildAttribMods, clearBisect, deleteSnapshot, findLog, readBisect, readSnapshots, takeSnapshot, writeBisect } from './tools.ts'
 
 // Lets a test run use a throwaway profile instead of the real one.
 if (process.env.LAUNCHER_USER_DATA) app.setPath('userData', resolve(process.env.LAUNCHER_USER_DATA))
@@ -103,6 +104,17 @@ async function writeList(id: string, list: string[]): Promise<void> {
   await store().setActiveMods(id, list, (await scan()).gameVersion, await installedExpansions())
 }
 
+/** Automatic snapshot of the stored list. Skipped during a bisect, whose test lists are not the user's own. */
+async function autoSnapshot(id: string, reason: string): Promise<void> {
+  try {
+    const bisect = await readBisect(store().dir(id))
+    if (bisect && !bisect.done) return
+    await takeSnapshot(store().dir(id), (await store().get(id)).activeMods, 'auto', reason)
+  } catch {
+    // A failed backup must not block saving or launching.
+  }
+}
+
 async function saveBisect(id: string, state: BisectState): Promise<BisectState> {
   if (state.done) await writeList(id, restoreList(state))
   await writeBisect(store().dir(id), state)
@@ -147,7 +159,10 @@ function registerIpc(): void {
   handle('updateInstance', (id: string, patch: Partial<InstanceInput>) => store().update(id, patch))
   handle('duplicateInstance', (id: string) => store().duplicate(id))
   handle('deleteInstance', (id: string) => store().remove(id))
-  handle('setActiveMods', async (id: string, mods: string[]) => store().setActiveMods(id, mods, (await scan()).gameVersion, await installedExpansions()))
+  handle('setActiveMods', async (id: string, mods: string[]) => {
+    await autoSnapshot(id, 'before change')
+    return store().setActiveMods(id, mods, (await scan()).gameVersion, await installedExpansions())
+  })
   handle('openInstanceFolder', async (id: string) => {
     const error = await shell.openPath(store().dataDir(id))
     if (error) throw new Error(error)
@@ -175,6 +190,44 @@ function registerIpc(): void {
     if (state) await writeList(id, restoreList(state))
     await clearBisect(store().dir(id))
   })
+  handle('snapshotList', (id: string) => readSnapshots(store().dir(id)))
+  handle('snapshotSave', async (id: string, name: string) =>
+    takeSnapshot(store().dir(id), (await store().get(id)).activeMods, 'named', name.trim() || 'Snapshot')
+  )
+  handle('snapshotDelete', (id: string, snapshotId: string) => deleteSnapshot(store().dir(id), snapshotId))
+  handle('snapshotRestore', async (id: string, snapshotId: string) => {
+    const snap = (await readSnapshots(store().dir(id))).find((s) => s.id === snapshotId)
+    if (!snap) throw new Error('That snapshot no longer exists.')
+    await autoSnapshot(id, 'before restore')
+    return writeList(id, snap.activeMods).then(() => store().get(id))
+  })
+  handle('exportList', async (id: string, format: ExportFormat) => {
+    const inst = await store().get(id)
+    const win = BrowserWindow.getFocusedWindow()
+    const ext = format === 'xml' ? 'xml' : 'json'
+    const options: Electron.SaveDialogOptions = {
+      defaultPath: `${inst.name.replace(/[^\w.-]+/g, '_')}-modlist.${ext}`,
+      filters: [{ name: format === 'xml' ? 'ModsConfig.xml' : 'Mod list', extensions: [ext] }]
+    }
+    const result = win ? await dialog.showSaveDialog(win, options) : await dialog.showSaveDialog(options)
+    if (result.canceled || !result.filePath) return undefined
+    const scanned = await scan()
+    await writeFile(
+      result.filePath,
+      serializeList({ name: inst.name, activeMods: inst.activeMods, gameVersion: scanned.gameVersion, knownExpansions: await installedExpansions() }, format),
+      'utf8'
+    )
+    return result.filePath
+  })
+  handle('importList', async () => {
+    const win = BrowserWindow.getFocusedWindow()
+    const options: Electron.OpenDialogOptions = { properties: ['openFile'], filters: [{ name: 'Mod list', extensions: ['xml', 'json'] }] }
+    const result = win ? await dialog.showOpenDialog(win, options) : await dialog.showOpenDialog(options)
+    if (result.canceled || !result.filePaths[0]) return undefined
+    const parsed = parseList(await readFile(result.filePaths[0], 'utf8'))
+    const installed = new Set((await scan()).mods.flatMap((m) => [m.uid, m.packageId]))
+    return { file: result.filePaths[0], name: parsed.name, activeMods: parsed.activeMods, missing: missingMods(parsed.activeMods, installed) }
+  })
   handle('launch', async (id: string): Promise<LaunchResult> => {
     try {
       const s = await getSettings()
@@ -183,6 +236,7 @@ function registerIpc(): void {
       // During a bisect the test list goes to this instance's ModsConfig only.
       const bisect = await readBisect(instances.dir(id))
       if (bisect && !bisect.done) await writeList(id, testList(bisect))
+      else await autoSnapshot(id, 'before launch')
       const cmd = buildLaunchCommand(s.gameDir, s.exeName, instances.dataDir(id))
       if (!(await exists(cmd.file))) return { ok: false, error: `Game executable not found: ${cmd.file}` }
       const child = spawn(cmd.file, cmd.args, { cwd: cmd.cwd, detached: true, stdio: 'ignore', windowsHide: false })

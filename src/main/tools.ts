@@ -4,7 +4,9 @@ import { homedir } from 'node:os'
 import { join } from 'node:path'
 import type { LogResult } from '../shared/api.ts'
 import { parseLog, type AttribMod } from '../shared/logParser.ts'
+import { randomUUID } from 'node:crypto'
 import type { BisectState } from '../shared/bisect.ts'
+import { addSnapshot, type Snapshot } from '../shared/snapshots.ts'
 import type { ModInfo } from '../shared/types.ts'
 
 const MAX_LOG_BYTES = 40 * 1024 * 1024
@@ -94,4 +96,43 @@ export async function writeBisect(instDir: string, state: BisectState): Promise<
 
 export async function clearBisect(instDir: string): Promise<void> {
   await rm(join(instDir, 'bisect.json'), { force: true })
+}
+
+/** Snapshots live in <instance dir>/snapshots.json, newest first. */
+export async function readSnapshots(instDir: string): Promise<Snapshot[]> {
+  try {
+    const data = JSON.parse(await readFile(join(instDir, 'snapshots.json'), 'utf8'))
+    return Array.isArray(data) ? (data as Snapshot[]) : []
+  } catch {
+    return []
+  }
+}
+
+async function writeSnapshots(instDir: string, list: Snapshot[]): Promise<void> {
+  await mkdir(instDir, { recursive: true })
+  await writeFile(join(instDir, 'snapshots.json'), JSON.stringify(list, null, 2), 'utf8')
+}
+
+export async function takeSnapshot(
+  instDir: string,
+  activeMods: string[],
+  kind: Snapshot['kind'],
+  label?: string
+): Promise<Snapshot[]> {
+  const snap: Snapshot = {
+    id: randomUUID().slice(0, 12),
+    kind,
+    ...(kind === 'named' ? { name: label } : { reason: label }),
+    createdAt: new Date().toISOString(),
+    activeMods: [...activeMods]
+  }
+  const next = addSnapshot(await readSnapshots(instDir), snap)
+  await writeSnapshots(instDir, next)
+  return next
+}
+
+export async function deleteSnapshot(instDir: string, snapId: string): Promise<Snapshot[]> {
+  const next = (await readSnapshots(instDir)).filter((s) => s.id !== snapId)
+  await writeSnapshots(instDir, next)
+  return next
 }
