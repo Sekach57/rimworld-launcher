@@ -1,23 +1,22 @@
-# Handoff: rimworld-launcher
+# Handoff: rimworld-launcher, branch task/launcher-tools
 
-Branch: task/launcher-design (no remote).
+Goal: four launcher tools. All four are done and committed.
 
-## Goal
-Polish pass on the launcher UI after the design review.
+Done
+- Log analysis: Player.log parsed into grouped issues (Log panel).
+- Bisect assistant: halve the active list, mark good/bad, narrow to the culprit.
+- Mod list backups: auto snapshots (last 30) plus named ones, restore with diff
+  preview, import/export of ModsConfig.xml and JSON (Backups panel).
+- 1.7 warnings fold into a collapsible info group in the Problems panel.
+- Test hook: LAUNCHER_OPEN_VIEW=log|bisect|backups with LAUNCHER_SCREENSHOT,
+  LAUNCHER_USER_DATA to run against a throwaway userData.
 
-## Done
-1. Active mod column: badge sits in its own right-aligned slot, author/name truncate before it. Below 520px column width the badge shows an icon only and the version is hidden. On hover or selection the badge moves left to make room for the toggle.
-2. At 1920 the badges line up on the row's right edge.
-3. Hero banner: darker scrim, lower image opacity, stronger text-shadow on title, stats, notes, eyebrow.
-4. New-instance dialog: Name and Letter share one row (grid), visible focus ring, no textarea resize, spacing matches the rest of the app.
-5. Renderer bundle split: SettingsView, DetailsPanel and Dialogs are lazy chunks, react and dnd-kit are vendor chunks. Largest chunk went from 973 kB to 564 kB (react-dom).
+Checks: typecheck, npm test (72 passed), build all green.
 
-## Checks
-typecheck, 41 tests, build all pass. Screenshots at 1200 and 1920 (main view, dialog) checked by eye.
+Key files: src/shared/{snapshots,modlistIO}.ts, src/main/{tools,instances,index}.ts,
+src/renderer/src/components/{BackupsPanel,DetailsPanel}.tsx, src/renderer/src/App.tsx.
 
-## Next
-- Optional: whole app sits in one Suspense (fallback null). Narrow it if a flash shows when a dialog opens the first time.
-- Merge into main only when the user says so.
-
-## Key files
-src/renderer/src/styles/{editor,library,base}.css, components/ModEditor.tsx, App.tsx, electron.vite.config.ts
+Next / open
+- Not tried against a real Player.log or a real mod set; UI was checked on seeded fixtures only.
+- Bisect and restore flows were not clicked through end to end in the app.
+- Nothing pushed, merged or version-bumped.
