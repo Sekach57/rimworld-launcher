@@ -23,6 +23,7 @@ const api = {
   launch: call('launch'),
   analyzeLog: call('analyzeLog'),
   openLogFile: call('openLogFile'),
+  openUrl: call('openUrl'),
   bisectGet: call('bisectGet'),
   bisectStart: call('bisectStart'),
   bisectAnswer: call('bisectAnswer'),

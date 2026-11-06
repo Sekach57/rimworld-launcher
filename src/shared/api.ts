@@ -63,6 +63,8 @@ export interface LauncherApi {
   launch(id: string): Promise<LaunchResult>
   analyzeLog(id: string): Promise<LogResult>
   openLogFile(id: string): Promise<void>
+  /** Opens a Steam Workshop link in the default browser. Other URLs are refused. */
+  openUrl(url: string): Promise<void>
   /** Current bisect for the instance, if one is in progress or just finished. */
   bisectGet(id: string): Promise<BisectState | undefined>
   bisectStart(id: string): Promise<BisectState>

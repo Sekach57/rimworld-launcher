@@ -168,6 +168,10 @@ function registerIpc(): void {
     if (error) throw new Error(error)
   })
   handle('analyzeLog', (id: string) => analyzeInstanceLog(id))
+  handle('openUrl', async (url: string) => {
+    if (typeof url !== 'string' || !url.startsWith('https://steamcommunity.com/')) throw new Error('Only Steam Workshop links can be opened')
+    await shell.openExternal(url)
+  })
   handle('openLogFile', async (id: string) => {
     const found = await findLog(store().dataDir(id))
     if (!found) throw new Error('No Player.log found yet. Start the game once first.')
