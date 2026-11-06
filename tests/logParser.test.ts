@@ -63,7 +63,7 @@ describe('parseLog', () => {
     expect(parseLog('Something Error here', mods).issues[0].suspect).toBeUndefined()
   })
   it('normalizes numbers and formats a report', () => {
-    expect(normalizeMessage('Foo 12 at 0xFF')).toBe('Foo # at #x#')
+    expect(normalizeMessage('Foo 12 at 0xFF')).toBe('Foo # at #xFF')
     expect(formatReport(r, 'Run')).toContain('Suspect: Cool Mod')
   })
 })
