@@ -1,15 +1,17 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { lazy, Suspense, useCallback, useEffect, useMemo, useState } from 'react'
 import { FolderCog, Library } from 'lucide-react'
 import type { InstanceInput } from '@shared/api.ts'
 import { checkMods, issuesByUid } from '@shared/checks.ts'
 import { sortMods } from '@shared/sort.ts'
 import type { Instance, ModInfo, ScanResult, Settings } from '@shared/types.ts'
-import { ConfirmDialog, InstanceDialog } from './components/Dialogs.tsx'
-import { DetailsPanel } from './components/DetailsPanel.tsx'
 import { InstanceHeader } from './components/InstanceHeader.tsx'
 import { ModEditor } from './components/ModEditor.tsx'
-import { SettingsView } from './components/SettingsView.tsx'
 import { Sidebar } from './components/Sidebar.tsx'
+
+const SettingsView = lazy(() => import('./components/SettingsView.tsx').then((m) => ({ default: m.SettingsView })))
+const DetailsPanel = lazy(() => import('./components/DetailsPanel.tsx').then((m) => ({ default: m.DetailsPanel })))
+const InstanceDialog = lazy(() => import('./components/Dialogs.tsx').then((m) => ({ default: m.InstanceDialog })))
+const ConfirmDialog = lazy(() => import('./components/Dialogs.tsx').then((m) => ({ default: m.ConfirmDialog })))
 
 type Dialog =
   | { kind: 'create' }
@@ -182,6 +184,7 @@ export function App() {
 
   return (
     <div className="app">
+      <Suspense fallback={null}>
       <Sidebar
         instances={instances}
         mods={mods}
@@ -299,6 +302,7 @@ export function App() {
           onCancel={() => setDialog(null)}
         />
       )}
+      </Suspense>
     </div>
   )
 }

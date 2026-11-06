@@ -349,8 +349,9 @@ const ModRow = memo(function ModRow({ uid, mod, issues, index, density, selected
       </span>
       {first && worst && (
         <span className={`badge ${worst}`} title={issues!.map((i) => i.message).join('\n')}>
-          {ISSUE_LABEL[first.kind]}
-          {issues!.length > 1 && ` +${issues!.length - 1}`}
+          <span className="badge-icon" aria-hidden="true">!</span>
+          <span className="badge-label">{ISSUE_LABEL[first.kind]}</span>
+          {issues!.length > 1 && <span className="badge-more">+{issues!.length - 1}</span>}
         </span>
       )}
       <button

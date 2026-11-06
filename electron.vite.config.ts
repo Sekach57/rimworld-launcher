@@ -19,6 +19,18 @@ export default defineConfig({
   },
   renderer: {
     resolve: { alias: shared },
-    plugins: [react()]
+    plugins: [react()],
+    build: {
+      rolldownOptions: {
+        output: {
+          advancedChunks: {
+            groups: [
+              { name: 'vendor-react', test: /node_modules[\/](react|react-dom|scheduler)[\/]/ },
+              { name: 'vendor-dnd', test: /node_modules[\/]@dnd-kit[\/]/ }
+            ]
+          }
+        }
+      }
+    }
   }
 })
