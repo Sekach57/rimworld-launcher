@@ -1,22 +1,28 @@
-# Handoff: rimworld-launcher, branch task/launcher-tools
+# Handoff: error breakdown (branch task/launcher-errors)
 
-Goal: four launcher tools. All four are done and committed.
+Goal: turn Player.log errors and Problems-list entries into a few plain
+diagnoses with one-click fixes.
 
 Done
-- Log analysis: Player.log parsed into grouped issues (Log panel).
-- Bisect assistant: halve the active list, mark good/bad, narrow to the culprit.
-- Mod list backups: auto snapshots (last 30) plus named ones, restore with diff
-  preview, import/export of ModsConfig.xml and JSON (Backups panel).
-- 1.7 warnings fold into a collapsible info group in the Problems panel.
-- Test hook: LAUNCHER_OPEN_VIEW=log|bisect|backups with LAUNCHER_SCREENSHOT,
-  LAUNCHER_USER_DATA to run against a throwaway userData.
+- src/shared/diagnosis.ts: pure rules (dependency, incompatible, load order,
+  version info, XML defs with author report, Harmony patch errors, noise,
+  root-cause collapsing), applyFix, applyAllSafe, summarize.
+- tests/diagnosis.test.ts: 9 tests; full suite 81 passing.
+- openUrl IPC (steamcommunity.com links only) for Workshop fix buttons.
+- DiagnosisSection at the top of the Log panel; link from the Problems list.
+  Fixes go through App.setActive -> api.setActiveMods, which snapshots first.
+- Typecheck and build clean.
 
-Checks: typecheck, npm test (72 passed), build all green.
+Next
+- Try it against a real Player.log after a game run.
+- Add more noise patterns and mod-specific rules as real logs show them.
+- Narrow Log panel: cards scroll under the buttons; consider a wider panel.
 
-Key files: src/shared/{snapshots,modlistIO}.ts, src/main/{tools,instances,index}.ts,
-src/renderer/src/components/{BackupsPanel,DetailsPanel}.tsx, src/renderer/src/App.tsx.
+Key files
+- src/shared/diagnosis.ts, tests/diagnosis.test.ts
+- src/renderer/src/components/DiagnosisSection.tsx, LogPanel.tsx, DetailsPanel.tsx
+- src/renderer/src/styles/tools.css (.diag-*)
 
-Next / open
-- Not tried against a real Player.log or a real mod set; UI was checked on seeded fixtures only.
-- Bisect and restore flows were not clicked through end to end in the app.
-- Nothing pushed, merged or version-bumped.
+Open questions
+- "Fix all safe" applies every list fix, including enabling mods. Keep as is?
+- Incompatible-mod cards offer disable on either side; no preferred side.
