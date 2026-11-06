@@ -2,7 +2,8 @@ import { spawn } from 'node:child_process'
 import { readFile, writeFile } from 'node:fs/promises'
 import { extname, join, resolve, sep } from 'node:path'
 import { pathToFileURL } from 'node:url'
-import { app, BrowserWindow, dialog, ipcMain, net, protocol, shell } from 'electron'
+import { app, BrowserWindow, dialog, ipcMain, net, protocol, safeStorage, shell } from 'electron'
+import { SteamLink } from './steam.ts'
 import { PREVIEW_SCHEME, type GameExit, type InstanceInput, type LaunchResult, type LogResult } from '../shared/api.ts'
 import { buildLaunchCommand } from '../shared/launch.ts'
 import { OFFICIAL_ORDER, CORE_ID, isOfficial, packageIdOfUid } from '../shared/sort.ts'
@@ -27,6 +28,9 @@ const store = () => new InstanceStore(join(app.getPath('userData'), 'instances')
 
 let settings: Settings | undefined
 let lastScan: ScanResult | undefined
+
+const steam = () =>
+  new SteamLink(app.getPath('userData'), safeStorage, (url, init) => net.fetch(url, init), async () => (await getSettings()).workshopDir)
 
 async function getSettings(): Promise<Settings> {
   settings ??= await loadSettings(settingsFile())
@@ -176,6 +180,10 @@ function registerIpc(): void {
     if (typeof url !== 'string' || !url.startsWith('https://steamcommunity.com/')) throw new Error('Only Steam Workshop links can be opened')
     await shell.openExternal(url)
   })
+  handle('steamStatus', () => steam().status())
+  handle('steamSetKey', (key: string | null) => steam().setKey(key))
+  handle('steamRefresh', () => steam().refresh())
+  handle('steamWorkshop', () => steam().workshop())
   handle('openLogFile', async (id: string) => {
     const found = await findLog(store().dataDir(id))
     if (!found) throw new Error('No Player.log found yet. Start the game once first.')

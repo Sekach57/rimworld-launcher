@@ -168,7 +168,7 @@ ul { padding: 0; list-style: none; }
 .field > span { font-size: 12px; font-weight: 600; color: var(--muted); letter-spacing: 0.02em; }
 .field small { font-size: 12px; }
 .field.narrow { max-width: none; }
-input[type='text'], input:not([type]), input[type='number'], textarea {
+input[type='text'], input[type='password'], input:not([type]), input[type='number'], textarea {
   width: 100%; padding: 8px 12px; background: var(--bg-deep); border: 1px solid var(--line);
   border-radius: var(--radius-sm); transition: border-color 0.15s;
 }
@@ -200,3 +200,12 @@ textarea { resize: none; min-height: 70px; }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation: none !important; transition: none !important; }
 }
+
+.steam-account { align-items: center; margin-bottom: 12px; }
+.steam-avatar { width: 48px; height: 48px; border-radius: 8px; flex: none; object-fit: cover; }
+.steam-avatar.letter { display: grid; place-items: center; background: var(--accent-soft); color: var(--accent); font-weight: 700; font-size: 20px; }
+.steam-name { font-weight: 600; }
+.steam-small { font-size: 12px; }
+.steam-key { flex: 1; max-width: 360px; font-family: ui-monospace, monospace; }
+.steam-error { display: inline-block; margin-top: 8px; white-space: normal; }
+.steam-section h3 { margin: 16px 0 4px; font-size: 13px; }

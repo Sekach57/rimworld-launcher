@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
+import type { SteamStatus } from '@shared/api.ts'
 import type { ScanResult, Settings } from '@shared/types.ts'
-import { SOURCE_LABEL } from '../format.ts'
+import { relativeTime, SOURCE_LABEL } from '../format.ts'
 
 interface Props {
   settings: Settings
@@ -10,6 +11,7 @@ interface Props {
   onDetect(): Promise<Settings>
   onPick(current: string): Promise<string | undefined>
   onRescan(): Promise<void>
+  onSteamChanged?(): void
 }
 
 const PATHS: { key: 'gameDir' | 'workshopDir' | 'defaultDataDir'; label: string; hint: string }[] = [
@@ -120,7 +122,105 @@ export function SettingsView(p: Props) {
           </button>
         </div>
       </section>
+      <SteamSection onChanged={p.onSteamChanged} />
     </div>
+  )
+}
+
+function SteamSection({ onChanged }: { onChanged?(): void }) {
+  const [st, setSt] = useState<SteamStatus>()
+  const [key, setKey] = useState('')
+  const [busy, setBusy] = useState(false)
+  const [err, setErr] = useState<string>()
+
+  useEffect(() => {
+    window.api.steamStatus().then(setSt, (e: Error) => setErr(e.message))
+  }, [])
+
+  async function run(fn: () => Promise<SteamStatus>, after?: () => void) {
+    setBusy(true)
+    setErr(undefined)
+    try {
+      setSt(await fn())
+      after?.()
+      onChanged?.()
+    } catch (e) {
+      setErr((e as Error).message.replace(/^Error invoking remote method '[^']+': (Error: )?/, ''))
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  const name = st?.online?.name ?? st?.user?.name
+  return (
+    <section className="settings-section steam-section">
+      <h2>Steam</h2>
+      {!st ? (
+        <p className="muted">{err ?? 'Reading Steam files...'}</p>
+      ) : (
+        <>
+          <div className="row gap steam-account">
+            {st.avatar ? (
+              <img className="steam-avatar" src={st.avatar} alt="" />
+            ) : (
+              <span className="steam-avatar letter">{(name ?? '?').slice(0, 1).toUpperCase()}</span>
+            )}
+            <div>
+              <div className="steam-name">{name ?? 'No Steam account found'}</div>
+              <div className="muted steam-small">
+                {st.online?.state ?? (st.steamPath ? 'Found on disk' : 'Steam folder not found')}
+                {st.online?.game ? ` · playing ${st.online.game}` : ''}
+              </div>
+            </div>
+          </div>
+          <dl className="facts wide">
+            <FactPair label="Steam folder" value={st.steamPath ?? 'not found'} />
+            <FactPair label="Workshop items" value={String(st.workshopItems)} />
+            <FactPair label="Pending updates" value={String(st.pendingUpdates)} />
+            <FactPair label="Last refresh" value={st.refreshedAt ? relativeTime(new Date(st.refreshedAt).toISOString()) : 'never'} />
+          </dl>
+          <h3>Web API key</h3>
+          <p className="muted steam-small">
+            Optional. Read-only: online status and Workshop details. Get one at https://steamcommunity.com/dev/apikey. It is
+            stored encrypted on this computer and never shown again.
+          </p>
+          {!st.canStoreKey && <p className="badge warn">This system cannot encrypt the key, so it cannot be saved.</p>}
+          {st.hasKey ? (
+            <div className="row gap">
+              <span className="muted">Key saved, ends in ...{st.keyHint}</span>
+              <button className="btn" disabled={busy} onClick={() => run(() => window.api.steamSetKey(null))}>
+                Remove key
+              </button>
+            </div>
+          ) : (
+            <div className="row gap">
+              <input
+                className="steam-key"
+                type="password"
+                autoComplete="off"
+                spellCheck={false}
+                placeholder="32 characters"
+                value={key}
+                onChange={(e) => setKey(e.target.value)}
+              />
+              <button
+                className="btn"
+                disabled={busy || !key.trim() || !st.canStoreKey}
+                onClick={() => run(() => window.api.steamSetKey(key), () => setKey(''))}
+              >
+                Save key
+              </button>
+            </div>
+          )}
+          {(err ?? st.error) && <p className="badge warn steam-error">{err ?? st.error}</p>}
+          <div className="row gap settings-actions">
+            <button className="btn" disabled={busy} onClick={() => run(() => window.api.steamRefresh())}>
+              {busy ? 'Working...' : 'Refresh from Steam'}
+            </button>
+          </div>
+        </>
+      )}
+    </section>
   )
 }
 

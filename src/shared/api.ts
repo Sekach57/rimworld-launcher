@@ -45,6 +45,39 @@ export interface GameExit {
   errors: number
 }
 
+/** One Workshop item: install data from disk plus details from the Web API when available. */
+export interface WorkshopInfo {
+  id: string
+  size?: number
+  /** ms since epoch, from the local install record. */
+  updatedAt?: number
+  /** Steam has a newer version than the one on disk. */
+  needsUpdate?: boolean
+  title?: string
+  subscriptions?: number
+  tags?: string[]
+  webUpdatedAt?: number
+}
+
+/** What the renderer may know about the Steam link. The key itself never leaves the main process. */
+export interface SteamStatus {
+  steamPath?: string
+  /** Signed-in account found in loginusers.vdf. */
+  user?: { id: string; name: string }
+  /** data: URL of the cached avatar. */
+  avatar?: string
+  hasKey: boolean
+  keyHint?: string
+  /** False when the OS cannot encrypt, so the key is not stored. */
+  canStoreKey: boolean
+  online?: { name?: string; state?: string; game?: string }
+  workshopItems: number
+  pendingUpdates: number
+  /** Last Web API refresh, ms since epoch. */
+  refreshedAt?: number
+  error?: string
+}
+
 /** Everything the renderer can ask of the main process. Exposed as `window.api` by the preload. */
 export interface LauncherApi {
   getSettings(): Promise<Settings>
@@ -67,6 +100,13 @@ export interface LauncherApi {
   openLogFile(id: string): Promise<void>
   /** Opens a Steam Workshop link in the default browser. Other URLs are refused. */
   openUrl(url: string): Promise<void>
+  steamStatus(): Promise<SteamStatus>
+  /** Saves the Web API key encrypted, or removes it with null. */
+  steamSetKey(key: string | null): Promise<SteamStatus>
+  /** Re-reads local files and asks the Web API for profile and Workshop details. */
+  steamRefresh(): Promise<SteamStatus>
+  /** Workshop data keyed by item id. */
+  steamWorkshop(): Promise<Record<string, WorkshopInfo>>
   /** Current bisect for the instance, if one is in progress or just finished. */
   bisectGet(id: string): Promise<BisectState | undefined>
   bisectStart(id: string): Promise<BisectState>

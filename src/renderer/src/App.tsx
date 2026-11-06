@@ -1,6 +1,6 @@
 import { lazy, Suspense, useCallback, useEffect, useMemo, useState } from 'react'
 import { FolderCog, Library, TriangleAlert } from 'lucide-react'
-import type { GameExit, InstanceInput } from '@shared/api.ts'
+import type { GameExit, InstanceInput, WorkshopInfo } from '@shared/api.ts'
 import { checkMods, issuesByUid } from '@shared/checks.ts'
 import { sortMods } from '@shared/sort.ts'
 import type { Instance, ModInfo, ScanResult, Settings } from '@shared/types.ts'
@@ -56,6 +56,10 @@ export function App() {
   const [exitInfo, setExitInfo] = useState<GameExit>()
   const [logKey, setLogKey] = useState(0)
   const [categories, setCategories] = useState<Record<string, string>>({})
+  const [workshop, setWorkshop] = useState<Record<string, WorkshopInfo>>({})
+  const loadWorkshop = useCallback(() => {
+    api.steamWorkshop().then(setWorkshop, () => setWorkshop({}))
+  }, [api])
 
   const say = useCallback((text: string, tone: Notice['tone'] = 'info') => setNotice({ text, tone }), [])
 
@@ -69,12 +73,13 @@ export function App() {
     setScanning(true)
     try {
       setScan(await api.scan())
+      loadWorkshop()
     } catch (e) {
       say(`Scan failed: ${errorText(e)}`, 'error')
     } finally {
       setScanning(false)
     }
-  }, [api, say])
+  }, [api, say, loadWorkshop])
 
   useEffect(() => {
     let cancelled = false
@@ -235,6 +240,7 @@ export function App() {
             onDetect={() => api.detectSettings()}
             onPick={(current) => api.pickFolder(current)}
             onRescan={runScan}
+            onSteamChanged={loadWorkshop}
           />
         ) : current ? (
           <>
@@ -331,6 +337,7 @@ export function App() {
                 onSelect={setSelectedMod}
                 onOpenLog={() => setTool('log')}
                 categories={categories}
+                workshop={workshop}
                 onSetCategory={(id, cat) =>
                   void api.setCategory(id, cat).then(setCategories, (e) => say(errorText(e), 'error'))
                 }

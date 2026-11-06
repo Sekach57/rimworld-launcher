@@ -1,10 +1,10 @@
 import { useMemo, useState } from 'react'
 import { AlertTriangle, ArrowLeft, ChevronRight, CircleAlert, CircleCheck, Info, ImageOff, MousePointerClick } from 'lucide-react'
 import { forVersion, majorMinor } from '@shared/about.ts'
-import { previewUrl } from '@shared/api.ts'
+import { previewUrl, type WorkshopInfo } from '@shared/api.ts'
 import type { Issue, ModInfo } from '@shared/types.ts'
 import { CATEGORIES, autoCategory, isCategory } from '@shared/categories.ts'
-import { ISSUE_LABEL, SOURCE_LABEL, cleanDescription } from '../format.ts'
+import { ISSUE_LABEL, SOURCE_LABEL, cleanDescription, formatBytes, relativeTime } from '../format.ts'
 
 interface Props {
   uid?: string
@@ -16,6 +16,7 @@ interface Props {
   onOpenLog?(): void
   categories?: Record<string, string>
   onSetCategory?(packageId: string, category: string | null): void
+  workshop?: Record<string, WorkshopInfo>
 }
 
 export function DetailsPanel(p: Props) {
@@ -146,7 +147,8 @@ function IssuesFor(props: { uid: string; issues: Issue[] }) {
   )
 }
 
-function ModDetails({ mod, mods, active, issues, gameVersion, onSelect, categories, onSetCategory }: Props & { mod: ModInfo }) {
+function ModDetails({ mod, mods, active, issues, gameVersion, onSelect, categories, onSetCategory, workshop }: Props & { mod: ModInfo }) {
+  const w = mod.steamId ? workshop?.[mod.steamId] : undefined
   const [broken, setBroken] = useState(false)
   const activeSet = useMemo(() => new Set(active), [active])
   const byPackage = useMemo(() => {
@@ -193,6 +195,38 @@ function ModDetails({ mod, mods, active, issues, gameVersion, onSelect, categori
             <>
               <dt>Steam id</dt>
               <dd className="mono">{mod.steamId}</dd>
+            </>
+          )}
+          {w?.needsUpdate && (
+            <>
+              <dt>Workshop</dt>
+              <dd>
+                <span className="badge warn">Update pending</span>
+              </dd>
+            </>
+          )}
+          {w?.size !== undefined && (
+            <>
+              <dt>Size</dt>
+              <dd>{formatBytes(w.size)}</dd>
+            </>
+          )}
+          {(w?.webUpdatedAt ?? w?.updatedAt) !== undefined && (
+            <>
+              <dt>Updated</dt>
+              <dd>{relativeTime(new Date((w!.webUpdatedAt ?? w!.updatedAt)!).toISOString())}</dd>
+            </>
+          )}
+          {w?.subscriptions !== undefined && (
+            <>
+              <dt>Subscribers</dt>
+              <dd>{w.subscriptions.toLocaleString()}</dd>
+            </>
+          )}
+          {w?.tags && (
+            <>
+              <dt>Tags</dt>
+              <dd>{w.tags.join(', ')}</dd>
             </>
           )}
           <dt>Category</dt>

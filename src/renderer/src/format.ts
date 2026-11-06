@@ -1,5 +1,17 @@
 import type { IssueKind, ModInfo, ModSource } from '@shared/types.ts'
 
+export function formatBytes(n: number): string {
+  if (n < 1024) return `${n} B`
+  const units = ['KB', 'MB', 'GB']
+  let v = n / 1024
+  let i = 0
+  while (v >= 1024 && i < units.length - 1) {
+    v /= 1024
+    i++
+  }
+  return `${v < 10 ? v.toFixed(1) : Math.round(v)} ${units[i]}`
+}
+
 export function relativeTime(iso: string | undefined, now = Date.now()): string {
   if (!iso) return 'never'
   const then = Date.parse(iso)
