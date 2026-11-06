@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { AlertTriangle, ArrowLeft, CircleAlert, CircleCheck, ImageOff, MousePointerClick } from 'lucide-react'
+import { AlertTriangle, ArrowLeft, ChevronRight, CircleAlert, CircleCheck, Info, ImageOff, MousePointerClick } from 'lucide-react'
 import { forVersion, majorMinor } from '@shared/about.ts'
 import { previewUrl } from '@shared/api.ts'
 import type { Issue, ModInfo } from '@shared/types.ts'
@@ -19,7 +19,7 @@ export function DetailsPanel(p: Props) {
   return (
     <aside className="details">
       {!p.uid ? (
-        <IssueList issues={p.issues} mods={p.mods} onSelect={p.onSelect} />
+        <IssueList issues={p.issues} mods={p.mods} gameVersion={p.gameVersion} onSelect={p.onSelect} />
       ) : mod ? (
         <ModDetails key={mod.uid} mod={mod} {...p} />
       ) : (
@@ -44,18 +44,33 @@ function BackLink(props: { onClick(): void }) {
 
 function IssueGroup(props: {
   title: string
-  tone: 'error' | 'warn'
+  tone: 'error' | 'warn' | 'info'
   issues: Issue[]
   mods: Map<string, ModInfo>
   onSelect(uid: string): void
 }) {
+  const [open, setOpen] = useState(props.tone !== 'info')
   if (props.issues.length === 0) return null
+  if (!open) {
+    return (
+      <button className="issue-fold" onClick={() => setOpen(true)}>
+        <ChevronRight size={14} />
+        <Info size={14} />
+        {props.title}
+      </button>
+    )
+  }
   return (
     <section className={`issue-group ${props.tone}`}>
       <h3>
-        {props.tone === 'error' ? <CircleAlert size={15} /> : <AlertTriangle size={15} />}
+        {props.tone === 'error' ? <CircleAlert size={15} /> : props.tone === 'info' ? <Info size={15} /> : <AlertTriangle size={15} />}
         {props.title}
         <span className="count">{props.issues.length}</span>
+        {props.tone === 'info' && (
+          <button className="link" onClick={() => setOpen(false)}>
+            Hide
+          </button>
+        )}
       </h3>
       <ul className="issue-list">
         {props.issues.map((i, n) => (
@@ -72,9 +87,15 @@ function IssueGroup(props: {
   )
 }
 
-function IssueList(props: { issues: Issue[]; mods: Map<string, ModInfo>; onSelect(uid: string): void }) {
+function IssueList(props: { issues: Issue[]; mods: Map<string, ModInfo>; gameVersion: string; onSelect(uid: string): void }) {
   const errors = props.issues.filter((i) => i.severity === 'error')
-  const warnings = props.issues.filter((i) => i.severity !== 'error')
+  const rest = props.issues.filter((i) => i.severity !== 'error')
+  // Mods that simply do not list the current game version are common and
+  // usually fine, so they get their own quiet, collapsed group.
+  const unlisted = rest.filter((i) => i.kind === 'unsupported-version')
+  const warnings = rest.filter((i) => i.kind !== 'unsupported-version')
+  const ver = majorMinor(props.gameVersion) || props.gameVersion
+  const foldTitle = `${unlisted.length} mod${unlisted.length === 1 ? '' : 's'} ${unlisted.length === 1 ? "doesn't" : "don't"} list ${ver} in supportedVersions`
   return (
     <div className="details-body">
       <h2>Problems</h2>
@@ -89,6 +110,7 @@ function IssueList(props: { issues: Issue[]; mods: Map<string, ModInfo>; onSelec
           <p className="muted">Select an entry to jump to the mod.</p>
           <IssueGroup title="Errors" tone="error" issues={errors} mods={props.mods} onSelect={props.onSelect} />
           <IssueGroup title="Warnings" tone="warn" issues={warnings} mods={props.mods} onSelect={props.onSelect} />
+          <IssueGroup title={foldTitle} tone="info" issues={unlisted} mods={props.mods} onSelect={props.onSelect} />
           <p className="hint">
             <MousePointerClick size={14} /> Select a mod to see its details.
           </p>
