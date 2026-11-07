@@ -1,26 +1,34 @@
-# Handoff: five launcher features (branch task/launcher-steam)
+# Handoff: Stage D, profile achievements (branch task/launcher-achievements)
 
-Goal: drag-and-drop, categories, three list densities, Steam link, profile
-achievements.
+Goal: five launcher features. A (2d25dcd), B (6fcf37b), C/Steam (51ab1d0) are
+done. D (local achievements) is half done and NOT committed yet.
 
-Done
-- Stage A (densities, drag-and-drop): 2d25dcd.
-- Stage B (categories: auto plus manual override, list filter): 6fcf37b.
-- Stage C (Steam): 51ab1d0. Local account, avatar and Workshop install data
-  from Steam files; optional Web API key (read-only) stored with safeStorage
-  in userData/steam.json, renderer sees only the last 4 chars. Workshop
-  details cache in steam-cache.json, errors redact `key=`.
-- 103 tests pass, typecheck clean, exe built and checked over CDP: Settings
-  shows the Steam section, no key text in the DOM.
+Done in D (untracked files, keep them)
+- src/shared/achievements.ts: StatKey list, 17 ACHIEVEMENTS, evaluate,
+  stampUnlocks, normalizeStats.
+- src/main/stats.ts: StatsStore (userData/stats.json, write queue, bump, max,
+  profile()).
+- tests/achievements.test.ts: 8 tests, pass.
 
-Next
-- Stage D: local profile achievements (pure rules in src/shared, stats kept
-  in userData, a Profile view).
-- Try a real key: Settings, Steam, Save key, Refresh.
+Next (in this order)
+1. src/main/index.ts: import StatsStore and StatKey; lazy stats() and a
+   fire-and-forget track(key) helper that never throws. Hook handlers:
+   setCategory, createInstance, importCurrent, setActiveMods, analyzeLog,
+   steamSetKey (only when key set), bisectAnswer (when done), snapshotSave,
+   snapshotRestore, exportList, importList, launch (launches, maxActiveMods,
+   cleanExits or crashes on exit). Add handle('getProfile').
+   index.ts is too big for Read: use sed -n.
+2. src/shared/api.ts getProfile(): Promise<Profile>; preload call('getProfile').
+3. Renderer: Trophy button in Sidebar.tsx, lazy ProfileView in App.tsx
+   (view === 'profile'), new ProfileView.tsx (summary tiles, 17 cards with
+   progress), CSS in the existing stylesheet.
+4. npm test (expect 111), npm run typecheck, npm run dist, CDP check that the
+   Profile view shows 17 cards. Commit with explicit paths, no trailer.
 
-Key files
-- src/main/steam.ts, src/main/steamParse.ts, tests/steam.test.ts
-- src/renderer/src/components/SettingsView.tsx (SteamSection), DetailsPanel.tsx
+After D
+- User asked for Steam login via the web (Steam OpenID 2.0 in an Electron
+  window). Ask before starting it.
 
-Open questions
-- Nothing merged into main yet; branches chain A -> B -> C.
+Notes
+- Nothing merged into main; branches chain A -> B -> C -> D.
+- Never show the Steam key, account name or ID.
