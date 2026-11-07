@@ -1,5 +1,5 @@
 /** Steam link: local files plus an optional Web API key. The key stays in the main process, encrypted at rest. */
-import { readFile, writeFile } from 'node:fs/promises'
+import { readFile, rm, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import type { SteamStatus, WorkshopInfo } from '../shared/api.ts'
 import { detectSteamPath, RIMWORLD_APP_ID } from './detect.ts'
@@ -40,6 +40,7 @@ interface Cache {
 
 const API = 'https://api.steampowered.com'
 const CHUNK = 100
+const STEAM_ID = /^\d{17}$/
 
 async function readJson<T>(file: string, fallback: T): Promise<T> {
   try {
@@ -71,6 +72,38 @@ export class SteamLink {
 
   private get cacheFile(): string {
     return join(this.dir, 'steam-cache.json')
+  }
+
+  /** SteamID64 confirmed by a Steam OpenID sign-in. Kept apart from the key so removing one leaves the other. */
+  private get openIdFile(): string {
+    return join(this.dir, 'steam-openid.json')
+  }
+
+  private async signedInId(): Promise<string | undefined> {
+    const { steamId } = await readJson<{ steamId?: unknown }>(this.openIdFile, {})
+    return typeof steamId === 'string' && STEAM_ID.test(steamId) ? steamId : undefined
+  }
+
+  /** Online data in the cache belongs to one account; drop it when the account changes. */
+  private async dropOnline(): Promise<void> {
+    const cache = await readJson<Cache>(this.cacheFile, {})
+    if (!cache.online) return
+    delete cache.online
+    await writeFile(this.cacheFile, JSON.stringify(cache), 'utf8')
+  }
+
+  /** Stores a SteamID64 that steamOpenId.verifyReturn has already confirmed with Steam. */
+  async signIn(steamId: string): Promise<SteamStatus> {
+    if (!STEAM_ID.test(steamId)) throw new Error('Not a SteamID64.')
+    if ((await this.signedInId()) !== steamId) await this.dropOnline()
+    await writeFile(this.openIdFile, JSON.stringify({ steamId, signedInAt: Date.now() }), 'utf8')
+    return this.status()
+  }
+
+  async signOut(): Promise<SteamStatus> {
+    if (await this.signedInId()) await this.dropOnline()
+    await rm(this.openIdFile, { force: true })
+    return this.status()
   }
 
   private async key(): Promise<string | undefined> {
@@ -110,8 +143,10 @@ export class SteamLink {
     const key = await this.key()
     const cache = await readJson<Cache>(this.cacheFile, {})
     const local = await this.localWorkshop()
+    const openId = await this.signedInId()
     const status: SteamStatus = {
       steamPath,
+      signedIn: !!openId,
       hasKey: !!key,
       keyHint: key ? key.slice(-4) : undefined,
       canStoreKey: this.crypto.isEncryptionAvailable(),
@@ -121,17 +156,26 @@ export class SteamLink {
       online: key ? cache.online : undefined,
       error: cache.error
     }
-    if (steamPath) {
-      const text = await readText(join(steamPath, 'config', 'loginusers.vdf'))
-      const user = text ? pickUser(parseLoginUsers(text)) : undefined
+    const text = steamPath ? await readText(join(steamPath, 'config', 'loginusers.vdf')) : undefined
+    const users = text ? parseLoginUsers(text) : []
+    if (openId) {
+      // The signed-in account wins. Its name comes from the same account on disk, or from the last Web API refresh.
+      const known = users.find((u) => u.id === openId)
+      status.user = { id: openId, name: known?.name ?? cache.online?.name ?? 'Steam user' }
+      status.source = 'openid'
+    } else {
+      const user = pickUser(users)
       if (user) {
         status.user = { id: user.id, name: user.name }
-        try {
-          const png = await readFile(join(steamPath, 'config', 'avatarcache', `${user.id}.png`))
-          if (png.length < 512 * 1024) status.avatar = `data:image/png;base64,${png.toString('base64')}`
-        } catch {
-          // No cached avatar; the UI shows a letter instead.
-        }
+        status.source = 'local'
+      }
+    }
+    if (steamPath && status.user) {
+      try {
+        const png = await readFile(join(steamPath, 'config', 'avatarcache', `${status.user.id}.png`))
+        if (png.length < 512 * 1024) status.avatar = `data:image/png;base64,${png.toString('base64')}`
+      } catch {
+        // No cached avatar; the UI shows a letter instead.
       }
     }
     return status

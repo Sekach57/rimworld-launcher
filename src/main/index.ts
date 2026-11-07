@@ -4,6 +4,8 @@ import { extname, join, resolve, sep } from 'node:path'
 import { pathToFileURL } from 'node:url'
 import { app, BrowserWindow, dialog, ipcMain, net, protocol, safeStorage, shell } from 'electron'
 import { SteamLink } from './steam.ts'
+import { verifyReturn } from './steamOpenId.ts'
+import { openSteamSignIn } from './steamSignIn.ts'
 import { PREVIEW_SCHEME, type GameExit, type InstanceInput, type LaunchResult, type LogResult } from '../shared/api.ts'
 import { buildLaunchCommand } from '../shared/launch.ts'
 import { OFFICIAL_ORDER, CORE_ID, isOfficial, packageIdOfUid } from '../shared/sort.ts'
@@ -218,6 +220,21 @@ function registerIpc(): void {
   })
   handle('steamRefresh', () => steam().refresh())
   handle('steamWorkshop', () => steam().workshop())
+  handle('steamSignIn', async () => {
+    const parent = BrowserWindow.getFocusedWindow() ?? BrowserWindow.getAllWindows()[0]
+    const url = await openSteamSignIn(parent)
+    // Steam's reply is checked locally, then confirmed by Steam itself over a direct request.
+    const id = url
+      ? await verifyReturn(url, (endpoint, body) =>
+          net.fetch(endpoint, { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body })
+        )
+      : undefined
+    if (!id) return { status: await steam().status(), cancelled: true }
+    const status = await steam().signIn(id)
+    track('steamLinked')
+    return { status }
+  })
+  handle('steamSignOut', () => steam().signOut())
   handle('openLogFile', async (id: string) => {
     const found = await findLog(store().dataDir(id))
     if (!found) throw new Error('No Player.log found yet. Start the game once first.')
@@ -345,6 +362,12 @@ function createWindow(): void {
   if (shot) {
     win.webContents.once('did-finish-load', () => {
       setTimeout(async () => {
+        // LAUNCHER_SCREENSHOT_SCROLL=<css selector> scrolls that element into view first.
+        const target = process.env.LAUNCHER_SCREENSHOT_SCROLL
+        if (target) {
+          await win.webContents.executeJavaScript(`document.querySelector(${JSON.stringify(target)})?.scrollIntoView({ block: 'start' })`)
+          await new Promise((r) => setTimeout(r, 300))
+        }
         const image = await win.webContents.capturePage()
         await writeFile(shot, image.toPNG())
         app.quit()
@@ -353,7 +376,7 @@ function createWindow(): void {
   }
 
   const devUrl = process.env.ELECTRON_RENDERER_URL
-  // Test hook: LAUNCHER_OPEN_VIEW=log|bisect|backups opens that tool for the first instance, =profile opens the profile.
+  // Test hook: LAUNCHER_OPEN_VIEW=log|bisect|backups opens that tool for the first instance, =profile opens the profile, =settings opens Settings.
   const query = process.env.LAUNCHER_OPEN_VIEW ? { openView: process.env.LAUNCHER_OPEN_VIEW } : undefined
   if (!app.isPackaged && devUrl) void win.loadURL(query ? `${devUrl}?openView=${query.openView}` : devUrl)
   else void win.loadFile(join(import.meta.dirname, '../renderer/index.html'), { query })

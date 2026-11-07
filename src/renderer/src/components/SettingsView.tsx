@@ -131,11 +131,14 @@ function SteamSection({ onChanged }: { onChanged?(): void }) {
   const [st, setSt] = useState<SteamStatus>()
   const [key, setKey] = useState('')
   const [busy, setBusy] = useState(false)
+  const [signing, setSigning] = useState(false)
   const [err, setErr] = useState<string>()
 
   useEffect(() => {
     window.api.steamStatus().then(setSt, (e: Error) => setErr(e.message))
   }, [])
+
+  const cleanError = (e: unknown) => (e as Error).message.replace(/^Error invoking remote method '[^']+': (Error: )?/, '')
 
   async function run(fn: () => Promise<SteamStatus>, after?: () => void) {
     setBusy(true)
@@ -145,9 +148,24 @@ function SteamSection({ onChanged }: { onChanged?(): void }) {
       after?.()
       onChanged?.()
     } catch (e) {
-      setErr((e as Error).message.replace(/^Error invoking remote method '[^']+': (Error: )?/, ''))
+      setErr(cleanError(e))
     } finally {
       setBusy(false)
+    }
+  }
+
+  /** Steam's page opens in its own window; this waits until the user finishes there or closes it. */
+  async function signIn() {
+    setSigning(true)
+    setErr(undefined)
+    try {
+      const res = await window.api.steamSignIn()
+      setSt(res.status)
+      if (!res.cancelled) onChanged?.()
+    } catch (e) {
+      setErr(cleanError(e))
+    } finally {
+      setSigning(false)
     }
   }
 
@@ -168,10 +186,32 @@ function SteamSection({ onChanged }: { onChanged?(): void }) {
             <div>
               <div className="steam-name">{name ?? 'No Steam account found'}</div>
               <div className="muted steam-small">
-                {st.online?.state ?? (st.steamPath ? 'Found on disk' : 'Steam folder not found')}
+                {st.online?.state ??
+                  (st.source === 'openid' ? 'Signed in through Steam' : st.steamPath ? 'Found on disk' : 'Steam folder not found')}
                 {st.online?.game ? ` · playing ${st.online.game}` : ''}
               </div>
             </div>
+          </div>
+          <div className="row gap steam-signin">
+            {st.signedIn ? (
+              <>
+                <span className="muted steam-small">Signed in through Steam. The launcher keeps only your Steam ID.</span>
+                <button className="btn" disabled={busy || signing} onClick={() => run(() => window.api.steamSignOut())}>
+                  Sign out
+                </button>
+              </>
+            ) : (
+              <>
+                <button className="btn primary" disabled={busy || signing} onClick={signIn}>
+                  {signing ? 'Waiting for Steam...' : 'Sign in through Steam'}
+                </button>
+                <span className="muted steam-small">
+                  {signing
+                    ? 'Finish on the Steam page, or close that window to stop.'
+                    : "Opens Steam's own sign-in page. The launcher never sees your password."}
+                </span>
+              </>
+            )}
           </div>
           <dl className="facts wide">
             <FactPair label="Steam folder" value={st.steamPath ?? 'not found'} />
@@ -214,7 +254,7 @@ function SteamSection({ onChanged }: { onChanged?(): void }) {
           )}
           {(err ?? st.error) && <p className="badge warn steam-error">{err ?? st.error}</p>}
           <div className="row gap settings-actions">
-            <button className="btn" disabled={busy} onClick={() => run(() => window.api.steamRefresh())}>
+            <button className="btn" disabled={busy || signing} onClick={() => run(() => window.api.steamRefresh())}>
               {busy ? 'Working...' : 'Refresh from Steam'}
             </button>
           </div>

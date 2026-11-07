@@ -36,13 +36,15 @@ function errorText(e: unknown): string {
   return raw.replace(/^Error invoking remote method '[^']+': (Error: )?/, '')
 }
 
-/** Test hook: ?openView=log|bisect|backups opens that tool on start, ?openView=profile opens the profile. */
+/** Test hook: ?openView=log|bisect|backups opens that tool on start, =profile or =settings opens that page. */
 function openViewFromUrl(): 'log' | 'bisect' | 'backups' | undefined {
   const v = new URLSearchParams(location.search).get('openView')
   return v === 'log' || v === 'bisect' || v === 'backups' ? v : undefined
 }
-const startView = (): 'instance' | 'profile' =>
-  new URLSearchParams(location.search).get('openView') === 'profile' ? 'profile' : 'instance'
+const startView = (): 'instance' | 'settings' | 'profile' => {
+  const v = new URLSearchParams(location.search).get('openView')
+  return v === 'profile' || v === 'settings' ? v : 'instance'
+}
 
 export function App() {
   const api = window.api

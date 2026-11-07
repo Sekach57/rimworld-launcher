@@ -82,7 +82,7 @@ export const ACHIEVEMENTS: AchievementDef[] = [
   { id: 'time-travel', title: 'Time travel', description: 'Restore a snapshot.', icon: 'save', stat: 'snapshotsRestored', target: 1 },
   { id: 'sharer', title: 'Sharer', description: 'Export a mod list.', icon: 'share', stat: 'listsExported', target: 1 },
   { id: 'librarian', title: 'Librarian', description: 'Set a category by hand 10 times.', icon: 'tag', stat: 'categoriesSet', target: 10 },
-  { id: 'linked', title: 'Linked', description: 'Add a Steam Web API key.', icon: 'link', stat: 'steamLinked', target: 1 }
+  { id: 'linked', title: 'Linked', description: 'Sign in through Steam or add a Web API key.', icon: 'link', stat: 'steamLinked', target: 1 }
 ]
 
 export function emptyStats(): Stats {

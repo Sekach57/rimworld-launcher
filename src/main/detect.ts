@@ -20,6 +20,9 @@ function regQuery(key: string, value: string): Promise<string | undefined> {
 }
 
 export async function detectSteamPath(): Promise<string | undefined> {
+  // Test hook: LAUNCHER_STEAM_PATH points at a stand-in Steam folder (or "" for none), so screenshots never show a real account.
+  const forced = process.env.LAUNCHER_STEAM_PATH
+  if (forced !== undefined) return forced && existsSync(forced) ? normalize(forced) : undefined
   const fromReg = (await regQuery('HKCU\\Software\\Valve\\Steam', 'SteamPath')) ?? (await regQuery('HKLM\\SOFTWARE\\WOW6432Node\\Valve\\Steam', 'InstallPath'))
   if (fromReg && existsSync(fromReg)) return normalize(fromReg)
   for (const guess of ['C:\\Program Files (x86)\\Steam', 'C:\\Program Files\\Steam']) {

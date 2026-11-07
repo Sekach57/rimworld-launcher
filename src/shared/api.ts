@@ -63,8 +63,12 @@ export interface WorkshopInfo {
 /** What the renderer may know about the Steam link. The key itself never leaves the main process. */
 export interface SteamStatus {
   steamPath?: string
-  /** Signed-in account found in loginusers.vdf. */
+  /** The account in use: the one confirmed by Steam sign-in, else the last one found in loginusers.vdf. */
   user?: { id: string; name: string }
+  /** True when the user signed in through Steam in the launcher. */
+  signedIn: boolean
+  /** Where user came from: Steam sign-in or the local Steam files. */
+  source?: 'openid' | 'local'
   /** data: URL of the cached avatar. */
   avatar?: string
   hasKey: boolean
@@ -108,6 +112,10 @@ export interface LauncherApi {
   steamRefresh(): Promise<SteamStatus>
   /** Workshop data keyed by item id. */
   steamWorkshop(): Promise<Record<string, WorkshopInfo>>
+  /** Opens Steam's sign-in page in a window and keeps the confirmed SteamID64. cancelled when the user closed it. */
+  steamSignIn(): Promise<{ status: SteamStatus; cancelled?: boolean }>
+  /** Forgets the account confirmed by Steam sign-in. */
+  steamSignOut(): Promise<SteamStatus>
   /** Current bisect for the instance, if one is in progress or just finished. */
   bisectGet(id: string): Promise<BisectState | undefined>
   bisectStart(id: string): Promise<BisectState>

@@ -202,6 +202,7 @@ textarea { resize: none; min-height: 70px; }
 }
 
 .steam-account { align-items: center; margin-bottom: 12px; }
+.steam-signin { align-items: center; flex-wrap: wrap; margin-bottom: 12px; }
 .steam-avatar { width: 48px; height: 48px; border-radius: 8px; flex: none; object-fit: cover; }
 .steam-avatar.letter { display: grid; place-items: center; background: var(--accent-soft); color: var(--accent); font-weight: 700; font-size: 20px; }
 .steam-name { font-weight: 600; }

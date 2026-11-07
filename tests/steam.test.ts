@@ -220,4 +220,61 @@ describe('SteamLink', () => {
     expect(s.online).toBeUndefined()
     expect(await readFile(join(userData, 'steam-cache.json'), 'utf8')).not.toContain('online')
   })
+
+  it('reports the local account with source local before any sign-in', async () => {
+    const s = await link().status()
+    expect(s).toMatchObject({ signedIn: false, source: 'local', user: { id: '76561190000000002' } })
+  })
+
+  it('prefers the Steam sign-in id over loginusers.vdf', async () => {
+    const s = await link().signIn('76561190000000005')
+    expect(s).toMatchObject({ signedIn: true, source: 'openid', user: { id: '76561190000000005', name: 'Steam user' } })
+    expect(s.avatar).toBeUndefined()
+    expect((await link().status()).user?.id).toBe('76561190000000005')
+  })
+
+  it('keeps the local name and avatar when the signed-in account is also on disk', async () => {
+    const s = await link().signIn('76561190000000001')
+    expect(s.user).toEqual({ id: '76561190000000001', name: 'Old Name' })
+    expect(s.avatar).toBeUndefined()
+    const t = await link().signIn('76561190000000002')
+    expect(t.user?.name).toBe('Colonist')
+    expect(t.avatar).toMatch(/^data:image\/png;base64,/)
+  })
+
+  it('refuses anything that is not a SteamID64', async () => {
+    await expect(link().signIn('123')).rejects.toThrow('SteamID64')
+    await expect(link().signIn('7656119000000000x')).rejects.toThrow('SteamID64')
+    expect((await link().status()).signedIn).toBe(false)
+  })
+
+  it('ignores a damaged sign-in file', async () => {
+    await writeFile(join(userData, 'steam-openid.json'), JSON.stringify({ steamId: '../../etc' }))
+    expect((await link().status()).source).toBe('local')
+  })
+
+  it('signing out falls back to the local account', async () => {
+    await link().signIn('76561190000000005')
+    const s = await link().signOut()
+    expect(s).toMatchObject({ signedIn: false, source: 'local', user: { id: '76561190000000002' } })
+    await expect(link().signOut()).resolves.toMatchObject({ signedIn: false })
+  })
+
+  it('removing the key keeps the sign-in', async () => {
+    await link().signIn('76561190000000005')
+    await link().setKey(KEY)
+    const s = await link().setKey(null)
+    expect(s).toMatchObject({ signedIn: true, user: { id: '76561190000000005' } })
+  })
+
+  it('refreshes the profile of the signed-in account and drops it when the account changes', async () => {
+    await link().setKey(KEY)
+    await link().signIn('76561190000000005')
+    const s = await link().refresh()
+    expect(calls[1]).toContain('steamids=76561190000000005')
+    expect(s.online?.name).toBe('Colonist')
+    const t = await link().signIn('76561190000000006')
+    expect(t.online).toBeUndefined()
+    expect(t.user?.name).toBe('Steam user')
+  })
 })

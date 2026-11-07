@@ -30,6 +30,8 @@ const api = {
   steamSetKey: call('steamSetKey'),
   steamRefresh: call('steamRefresh'),
   steamWorkshop: call('steamWorkshop'),
+  steamSignIn: call('steamSignIn'),
+  steamSignOut: call('steamSignOut'),
   bisectGet: call('bisectGet'),
   bisectStart: call('bisectStart'),
   bisectAnswer: call('bisectAnswer'),
