@@ -40,6 +40,7 @@ const api = {
   snapshotRestore: call('snapshotRestore'),
   exportList: call('exportList'),
   importList: call('importList'),
+  getProfile: call('getProfile'),
   onGameExit: (cb: (e: GameExit) => void) => {
     const fn = (_: unknown, e: GameExit) => cb(e)
     ipcRenderer.on('game-exit', fn)

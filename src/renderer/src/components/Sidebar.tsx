@@ -1,4 +1,4 @@
-import { Download, Plus, Settings as SettingsIcon, Swords } from 'lucide-react'
+import { Download, Plus, Settings as SettingsIcon, Swords, Trophy } from 'lucide-react'
 import { previewUrl } from '@shared/api.ts'
 import type { Instance, ModInfo } from '@shared/types.ts'
 import { coverPaths, relativeTime } from '../format.ts'
@@ -9,11 +9,13 @@ interface Props {
   mods: Map<string, ModInfo>
   selectedId?: string
   settingsOpen: boolean
+  profileOpen: boolean
   canCreate: boolean
   onSelect(id: string): void
   onCreate(): void
   onImport(): void
   onSettings(): void
+  onProfile(): void
 }
 
 export function Sidebar(p: Props) {
@@ -37,7 +39,7 @@ export function Sidebar(p: Props) {
           return (
             <button
               key={inst.id}
-              className={`instance-card${inst.id === p.selectedId && !p.settingsOpen ? ' selected' : ''}`}
+              className={`instance-card${inst.id === p.selectedId && !p.settingsOpen && !p.profileOpen ? ' selected' : ''}`}
               style={{ ['--inst' as string]: inst.color }}
               onClick={() => p.onSelect(inst.id)}
             >
@@ -75,6 +77,9 @@ export function Sidebar(p: Props) {
             <Download size={15} /> Import
           </button>
         </div>
+        <button className={`nav-item${p.profileOpen ? ' active' : ''}`} onClick={p.onProfile}>
+          <Trophy size={16} /> Profile
+        </button>
         <button className={`nav-item${p.settingsOpen ? ' active' : ''}`} onClick={p.onSettings}>
           <SettingsIcon size={16} /> Settings
         </button>

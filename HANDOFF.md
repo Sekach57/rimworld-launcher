@@ -1,34 +1,23 @@
-# Handoff: Stage D, profile achievements (branch task/launcher-achievements)
+# Handoff: launcher features (branch task/launcher-achievements)
 
-Goal: five launcher features. A (2d25dcd), B (6fcf37b), C/Steam (51ab1d0) are
-done. D (local achievements) is half done and NOT committed yet.
+Goal: five launcher features. A (2d25dcd), B (6fcf37b), C/Steam (51ab1d0)
+and D (local profile achievements) are done and committed.
 
-Done in D (untracked files, keep them)
-- src/shared/achievements.ts: StatKey list, 17 ACHIEVEMENTS, evaluate,
-  stampUnlocks, normalizeStats.
-- src/main/stats.ts: StatsStore (userData/stats.json, write queue, bump, max,
-  profile()).
-- tests/achievements.test.ts: 8 tests, pass.
+Stage D summary
+- src/shared/achievements.ts: 17 achievements, evaluate, stampUnlocks.
+- src/main/stats.ts: StatsStore, writes userData/stats.json.
+- src/main/index.ts: track()/trackMax() hooks in handlers, getProfile IPC.
+- Renderer: ProfileView.tsx (tiles + 17 cards with progress), Profile button
+  in Sidebar, view 'profile' in App, CSS in styles/tools.css.
+- Test hook: LAUNCHER_OPEN_VIEW=profile opens the profile on start.
+- Checks: typecheck clean, npm test 111/111, npm run dist ok, screenshot of
+  the built app with seeded stats shows 17 cards (5 unlocked).
 
-Next (in this order)
-1. src/main/index.ts: import StatsStore and StatKey; lazy stats() and a
-   fire-and-forget track(key) helper that never throws. Hook handlers:
-   setCategory, createInstance, importCurrent, setActiveMods, analyzeLog,
-   steamSetKey (only when key set), bisectAnswer (when done), snapshotSave,
-   snapshotRestore, exportList, importList, launch (launches, maxActiveMods,
-   cleanExits or crashes on exit). Add handle('getProfile').
-   index.ts is too big for Read: use sed -n.
-2. src/shared/api.ts getProfile(): Promise<Profile>; preload call('getProfile').
-3. Renderer: Trophy button in Sidebar.tsx, lazy ProfileView in App.tsx
-   (view === 'profile'), new ProfileView.tsx (summary tiles, 17 cards with
-   progress), CSS in the existing stylesheet.
-4. npm test (expect 111), npm run typecheck, npm run dist, CDP check that the
-   Profile view shows 17 cards. Commit with explicit paths, no trailer.
-
-After D
+Next
 - User asked for Steam login via the web (Steam OpenID 2.0 in an Electron
-  window). Ask before starting it.
+  window). Ask before starting it, on a new branch task/<slug> from this one.
 
 Notes
 - Nothing merged into main; branches chain A -> B -> C -> D.
 - Never show the Steam key, account name or ID.
+- Commits go without Co-Authored-By trailers.

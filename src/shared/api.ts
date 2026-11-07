@@ -1,3 +1,4 @@
+import type { Profile } from './achievements.ts'
 import type { BisectState } from './bisect.ts'
 import type { ExportFormat } from './modlistIO.ts'
 import type { Snapshot } from './snapshots.ts'
@@ -124,6 +125,8 @@ export interface LauncherApi {
   exportList(id: string, format: ExportFormat): Promise<string | undefined>
   /** Open dialog and parse. Does not change anything; the renderer applies it after a preview. */
   importList(): Promise<ImportPreview | undefined>
+  /** Local usage stats and achievement progress. */
+  getProfile(): Promise<Profile>
   /** Subscribes to game exit events. Returns an unsubscribe function. */
   onGameExit(cb: (e: GameExit) => void): () => void
 }

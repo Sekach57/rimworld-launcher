@@ -9,6 +9,7 @@ import { ModEditor } from './components/ModEditor.tsx'
 import { Sidebar } from './components/Sidebar.tsx'
 
 const SettingsView = lazy(() => import('./components/SettingsView.tsx').then((m) => ({ default: m.SettingsView })))
+const ProfileView = lazy(() => import('./components/ProfileView.tsx').then((m) => ({ default: m.ProfileView })))
 const DetailsPanel = lazy(() => import('./components/DetailsPanel.tsx').then((m) => ({ default: m.DetailsPanel })))
 const BackupsPanel = lazy(() => import('./components/BackupsPanel.tsx').then((m) => ({ default: m.BackupsPanel })))
 const BisectPanel = lazy(() => import('./components/BisectPanel.tsx').then((m) => ({ default: m.BisectPanel })))
@@ -35,11 +36,13 @@ function errorText(e: unknown): string {
   return raw.replace(/^Error invoking remote method '[^']+': (Error: )?/, '')
 }
 
-/** Test hook: ?openView=log|bisect|backups opens that tool on start. */
+/** Test hook: ?openView=log|bisect|backups opens that tool on start, ?openView=profile opens the profile. */
 function openViewFromUrl(): 'log' | 'bisect' | 'backups' | undefined {
   const v = new URLSearchParams(location.search).get('openView')
   return v === 'log' || v === 'bisect' || v === 'backups' ? v : undefined
 }
+const startView = (): 'instance' | 'profile' =>
+  new URLSearchParams(location.search).get('openView') === 'profile' ? 'profile' : 'instance'
 
 export function App() {
   const api = window.api
@@ -48,7 +51,7 @@ export function App() {
   const [scanning, setScanning] = useState(false)
   const [instances, setInstances] = useState<Instance[]>([])
   const [selectedId, setSelectedId] = useState<string>()
-  const [view, setView] = useState<'instance' | 'settings'>('instance')
+  const [view, setView] = useState<'instance' | 'settings' | 'profile'>(startView)
   const [dialog, setDialog] = useState<Dialog>(null)
   const [notice, setNotice] = useState<Notice>()
   const [selectedMod, setSelectedMod] = useState<string>()
@@ -218,6 +221,7 @@ export function App() {
         mods={mods}
         selectedId={view === 'instance' ? selectedId : undefined}
         settingsOpen={view === 'settings'}
+        profileOpen={view === 'profile'}
         onSelect={(id) => {
           setSelectedId(id)
           setSelectedMod(undefined)
@@ -227,11 +231,14 @@ export function App() {
         onCreate={() => setDialog({ kind: 'create' })}
         onImport={() => setDialog({ kind: 'import' })}
         onSettings={() => setView('settings')}
+        onProfile={() => setView('profile')}
         canCreate={Boolean(settings?.gameDir)}
       />
 
       <main className="main">
-        {view === 'settings' && settings ? (
+        {view === 'profile' ? (
+          <ProfileView />
+        ) : view === 'settings' && settings ? (
           <SettingsView
             settings={settings}
             scan={scan}
