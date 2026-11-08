@@ -120,4 +120,8 @@ These are meant for development and automated screenshots, not everyday use.
 
 This is an early release. The mod list, checks, log analysis, bisect, snapshots and profile are covered by unit tests. Steam OpenID sign-in passes its tests against recorded responses, but hasn't yet been tried with a live Steam login. Bug reports are welcome in Issues.
 
+## License
+
+MIT, see [LICENSE](LICENSE).
+
 RimWorld is a trademark of Ludeon Studios. This project is a fan-made tool and is not affiliated with Ludeon Studios or Valve.
